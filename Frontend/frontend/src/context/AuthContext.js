@@ -1,22 +1,24 @@
-import { createContext, useState } from "react";
+import { createContext, useState, useEffect } from "react";
 
 export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  // Initialize from localStorage to persist login across refreshes
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
 
-  const login = (token) => {
-    localStorage.setItem("token", token);
-    setUser({ token });
+  const login = (newToken) => {
+    localStorage.setItem("token", newToken);
+    setToken(newToken);
   };
 
   const logout = () => {
     localStorage.removeItem("token");
-    setUser(null);
+    setToken(null);
   };
 
+  // Provide 'token' directly so existing consumers like { token } = useContext(...) work
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ token, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

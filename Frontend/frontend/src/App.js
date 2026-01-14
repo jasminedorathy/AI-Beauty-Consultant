@@ -1,40 +1,44 @@
+
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
 import Login from "./auth/Login";
 import Signup from "./auth/Signup";
+
 import AnalyzePage from "./features/analysis/AnalyzePage";
 import HistoryPage from "./features/history/HistoryPage";
+
+import LiveAnalyzePage from "./features/camera/LiveAnalyzePage";
+
 import ProtectedRoute from "./components/ProtectedRoute";
+import DashboardLayout from "./layout/DashboardLayout";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
 
-        {/* Default route */}
+        {/* Default */}
         <Route path="/" element={<Navigate to="/signup" />} />
 
         {/* Public */}
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
 
-        {/* Protected */}
+        {/* Protected Dashboard */}
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <AnalyzePage />
+              <DashboardLayout />
             </ProtectedRoute>
           }
-        />
-
-        <Route
-          path="/history"
-          element={
-            <ProtectedRoute>
-              <HistoryPage />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route index element={<AnalyzePage />} />
+          <Route path="analyze" element={<AnalyzePage />} />
+          <Route path="live" element={<LiveAnalyzePage />} />
+          <Route path="history" element={<HistoryPage />} />
+          <Route path="trends" element={<div>Trends Coming Soon</div>} />
+        </Route>
 
       </Routes>
     </BrowserRouter>
@@ -42,3 +46,4 @@ function App() {
 }
 
 export default App;
+

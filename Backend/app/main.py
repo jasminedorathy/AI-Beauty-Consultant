@@ -40,5 +40,15 @@ from app.api.routes import router as analysis_router
 from app.api.auth_routes import router as auth_router
 
 # 4️⃣ REGISTER ROUTERS
+# 4️⃣ REGISTER ROUTERS
 app.include_router(auth_router)
 app.include_router(analysis_router)
+
+# 5️⃣ SERVE STATIC FILES (Images)
+from fastapi.staticfiles import StaticFiles
+import os
+
+# Ensure static directory exists
+os.makedirs("static/uploads", exist_ok=True)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")

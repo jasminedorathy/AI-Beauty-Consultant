@@ -1,16 +1,31 @@
 # ===== Python =====
-backend/venv/
-backend/__pycache__/
-backend/app/__pycache__/
-backend/.env
+venv/
+__pycache__/
+*.pyc
+.env
+*.env
+.pytest_cache/
 
 # ===== Node =====
-frontend/node_modules/
+node_modules/
+npm-debug.log
+yarn-error.log
 
 # ===== Build =====
-frontend/build/
-frontend/dist/
+build/
+dist/
+.next/
 
-# ===== OS =====
+# ===== User Data / Uploads =====
+Backend/static/uploads/
+*.jpg
+*.png
+# Keep the directory structure but ignore files
+!Backend/static/uploads/.gitkeep
+
+# ===== OS & Editor =====
 .DS_Store
 Thumbs.db
+.vscode/
+.idea/
+.gemini/
