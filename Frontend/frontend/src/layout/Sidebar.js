@@ -6,6 +6,7 @@ import {
   FaMagic,
   FaCut,
   FaPaintBrush,
+  FaSpa,
   FaUserCircle
 } from "react-icons/fa";
 
@@ -27,6 +28,7 @@ const Sidebar = () => {
         </div>
         <NavItem to="/dashboard/analyze" icon={<FaMagic />} label="Face Analysis" />
         <NavItem to="/dashboard/live" icon={<FaCamera />} label="Live Camera" />
+        <NavItem to="/dashboard/services" icon={<FaSpa />} label="Spa Services" badge="HOT" />
 
         <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-4 mb-2 mt-6">
           Styling Studio

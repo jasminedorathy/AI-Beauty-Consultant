@@ -124,3 +124,139 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
         import traceback
         traceback.print_exc()
         return {"error": f"Internal Server Error: {str(e)}"}
+
+@router.get("/history")
+async def get_history(current_user: dict = Depends(get_current_user)):
+    try:
+        email = current_user.get("sub")
+        # Fetch last 20 records, sorted by date DESC
+        # Note: In pymongo, find() returns a cursor, we need to list() it.
+        history = list(analysis_collection.find({"user_email": email}).sort("created_at", -1).limit(20))
+        
+        # Convert ObjectId and DateTime to string
+        for item in history:
+            item["id"] = str(item["_id"])
+            del item["_id"]
+            if "created_at" in item:
+                item["date"] = item["created_at"].strftime("%Y-%m-%d")
+                item["time"] = item["created_at"].strftime("%H:%M")
+                del item["created_at"]
+                
+        return history
+    except Exception as e:
+        print(f"Error fetching history: {e}")
+        return []
+
+# --- AI CONSULTANT CHATBOT (LLM POWERED) ---
+from pydantic import BaseModel
+import requests
+import json
+import os
+
+class ChatRequest(BaseModel):
+    message: str
+
+def load_api_key():
+    # Simple .env loader since python-dotenv might not be present
+    try:
+        with open(".env", "r") as f:
+            for line in f:
+                if line.startswith("OPENROUTER_API_KEY"):
+                    return line.strip().split("=")[1]
+    except:
+        return None
+    return None
+
+@router.post("/chat")
+async def chat_consultant(req: ChatRequest, current_user: dict = Depends(get_current_user)):
+    """
+    Real LLM Agent using OpenRouter (Llama 3.1 / Gemini):
+    1. Retrieves User Context (Skin Scan)
+    2. Injects Service Menu (RAG)
+    3. Generates Personalized Response via API
+    """
+    msg = req.message
+    email = current_user.get("sub")
+    
+    # 1. RETRIEVE CONTEXT
+    last_scan = analysis_collection.find_one({"user_email": email}, sort=[("created_at", -1)])
+    
+    # Prepare Context Strings
+    skin_context = "User has no recent scan."
+    gender = "Female"
+    if last_scan:
+        gender = last_scan.get("gender", "Female")
+        scores = last_scan.get('skin_scores', {})
+        shape = last_scan.get('face_shape', 'Unknown')
+        skin_context = f"User stats: Gender={gender}, FaceShape={shape}, Acne={scores.get('acne',0)*100:.0f}%, Oiliness={scores.get('oiliness',0)*100:.0f}%, Texture={scores.get('texture',0)*100:.0f}%."
+    
+    from app.ml.services_db import PARLOR_SERVICES
+    services_context = json.dumps(PARLOR_SERVICES.get(gender, PARLOR_SERVICES["Female"]))
+
+    # 2. CALL OPENROUTER (With Fallback Strategy)
+    api_key = load_api_key()
+    if not api_key:
+        return {"reply": "Error: AI API Key not configured. Please contact admin."}
+
+    system_prompt = f"""
+    You are an elite AI Beauty Consultant for a premium salon.
+    
+    **YOUR KNOWLEDGE BASE (Service Menu):**
+    {services_context}
+    
+    **CURRENT CLIENT CONTEXT:**
+    {skin_context}
+    
+    **INSTRUCTIONS:**
+    1. Be helpful, professional, and empathetic.
+    2. Recommending services? ONLY use the exact names and prices from the KNOWLEDGE BASE.
+    3. If the user has skin issues (Acne/Dryness) based on CLIENT CONTEXT, suggest specific treatments.
+    4. Keep responses concise (max 2-3 sentences).
+    5. If they ask to book, say "I've flagged this for our receptionist."
+    """
+    
+    # Priority List of Free Models to Try
+    models_to_try = [
+        "meta-llama/llama-3-8b-instruct:free",
+        "mistralai/mistral-7b-instruct:free",
+        "huggingfaceh4/zephyr-7b-beta:free",
+        "google/gemini-2.0-flash-exp:free"
+    ]
+
+    last_error = ""
+
+    for model in models_to_try:
+        try:
+            print(f"🤖 Trying AI Model: {model}...")
+            response = requests.post(
+                url="https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "http://localhost:3000", 
+                },
+                data=json.dumps({
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": msg}
+                    ]
+                }),
+                timeout=15 # Don't wait forever for a busy model
+            )
+            
+            if response.status_code == 200:
+                ai_reply = response.json()['choices'][0]['message']['content']
+                return {"reply": ai_reply}
+            else:
+                last_error = f"Model {model} failed ({response.status_code}): {response.text}"
+                print(f"⚠️ {last_error}")
+                continue # Try next model
+                
+        except Exception as e:
+            last_error = f"Model {model} exception: {str(e)}"
+            print(f"⚠️ {last_error}")
+            continue
+
+    # If all failed
+    return {"reply": f"Sorry, all AI brains are currently busy. Please try again in a moment. (Debug: {last_error})"}

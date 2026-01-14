@@ -59,10 +59,42 @@ def generate_consultation(face_shape, skin_scores, gender="Female"):
     # 2f. Sunscreen
     routine.append("☀️ **SPF**: Daily Sunscreen is non-negotiable!")
 
-    # 3. Final Compilation
-    final_recs = [f"**Diagnosis ({gender})**: {skin_type} Skin"] + routine
+    # 3. Salon & Spa Recommendations (Your Signature Menu)
+    from app.ml.services_db import PARLOR_SERVICES
     
-    # 4. Styling / Grooming Tip
+    # Determine primary issue
+    primary_issue = "Oily" # Default
+    if acne > 0.4: primary_issue = "Acne"
+    elif texture > 0.4: primary_issue = "Texture" # Roughness/Scars
+    elif oiliness > 0.6: primary_issue = "Oily"
+    elif oiliness < 0.3 and texture > 0.3: primary_issue = "Dry"
+    # Additional logic for Dullness/Aging could be added here
+    
+    # Fallback for "Normal" skin -> "Dull" (Glow treatments) or "Dry" (Hydration)
+    if skin_type == "Balanced" and primary_issue == "Oily": 
+         primary_issue = "Dull" 
+
+    # Select Issue Category
+    # Ensure keys match keys in services_db
+    issue_key = primary_issue
+    if issue_key not in ["Acne", "Oily", "Dry", "Dull", "Texture", "Aging"]:
+        issue_key = "Dull" # Safe fallback
+
+    services = PARLOR_SERVICES.get(gender, PARLOR_SERVICES["Female"]).get(issue_key, [])
+    
+    # Also fetch Combos if user has multiple intense issues?
+    # For now, just append services.
+    
+    # Format Recommendations
+    salon_recs = [f"💆 **Our Signature Care ({issue_key})**:"]
+    for svc in services:
+        salon_recs.append(f"- **{svc['name']}** ({svc['price']}): {svc['desc']}")
+
+    # 4. Final Compilation
+    # Add Salon Recs before the Grooming Tip
+    final_recs = [f"**Diagnosis ({gender})**: {skin_type} Skin"] + routine + salon_recs
+    
+    # 5. Styling / Grooming Tip
     if face_shape:
         tip_icon = "🧔" if gender == "Male" else "💄"
         topic = "Grooming" if gender == "Male" else "Makeup"

@@ -62,6 +62,7 @@ const Navbar = () => {
     if (path === "trends") return "Skin Trends 📈";
     if (path === "hair") return "Hair Styling 💇";
     if (path === "nails") return "Nail Studio 💅";
+    if (path === "services") return "Spa Menu 🌿";
     return "Dashboard";
   };
 

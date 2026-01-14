@@ -1,11 +1,12 @@
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import { Outlet } from "react-router-dom";
+import ConsultantChat from "../features/chat/ConsultantChat";
 
 const DashboardLayout = () => {
   return (
-    <div className="flex h-screen bg-gray-100">
-      
+    <div className="flex h-screen bg-gray-100 relative">
+
       {/* Sidebar */}
       <Sidebar />
 
@@ -16,6 +17,9 @@ const DashboardLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* AI Chatbot Widget - Floats on top */}
+      <ConsultantChat />
 
     </div>
   );

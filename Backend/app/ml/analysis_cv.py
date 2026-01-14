@@ -40,29 +40,55 @@ def calculate_face_shape(landmarks, width, height):
 
     # Ratios
     # 1. Face Length to Width Ratio (using cheek width as reference)
+    if cheek_width == 0: cheek_width = 1
     length_ratio = face_height / cheek_width
     
-    # 2. Width Comparisons
+    # 2. Key Width Ratios
+    jaw_cheek_ratio = jaw_width / cheek_width
+    forehead_cheek_ratio = forehead_width / cheek_width
+    
     shape = "Oval" # Default
 
-    # Logic Tree
-    if length_ratio > 1.5:
-        shape = "Oblong"
-    elif abs(cheek_width - face_height) < face_height * 0.1: # Width ~ Height
-        if jaw_width < cheek_width * 0.9: # Jaw significantly smaller
-             shape = "Round"
+    # --- FACE SHAPE LOGIC TREE (Based on diagram) ---
+    
+    # 1. LONG (Oblong)
+    # Face gracefully tapers, Elongated feature (High length ratio)
+    if length_ratio > 1.45:
+        shape = "Long"
+        # Sub-check: If jaw is very strong, could be "Rectangle" but user requested Long/Square split.
+        if jaw_cheek_ratio > 0.9:
+            shape = "Square" # Or "Rectangle" -> Mapped to Square usually
+            
+    # 2. ROUND vs SQUARE (Short/Wide faces, ratio < 1.25)
+    elif length_ratio < 1.25:
+        # Round: Widest at cheeks, soft jaw (Jaw << Cheek)
+        # Square: Jaw wide (~Cheek), angular
+        if jaw_cheek_ratio > 0.9:
+            shape = "Square"
         else:
-             shape = "Square"
+            shape = "Round"
+            
+    # 3. DIAMOND vs HEART vs OVAL (Medium ratio 1.25 - 1.45)
     else:
-        # Longer faces or standard ratios
-        if jaw_width > cheek_width * 0.9: # Strong jaw
-            shape = "Rectangular" if length_ratio > 1.4 else "Square"
-        elif forehead_width > cheek_width * 1.05 and jaw_width < cheek_width * 0.8:
+        # Diamond: Widest at cheeks (Forehead < Cheek AND Jaw < Cheek), Angular chin, Pointy
+        if forehead_cheek_ratio < 0.9 and jaw_cheek_ratio < 0.8:
+            shape = "Diamond"
+            
+        # Heart: Wide Forehead (Forehead > Cheek or Forehead ~= Cheek), Narrow Chin/Jaw
+        elif forehead_cheek_ratio >= 0.9 and jaw_cheek_ratio < 0.75:
             shape = "Heart"
-        elif cheek_width > forehead_width and cheek_width > jaw_width:
-             shape = "Diamond" if jaw_width < forehead_width else "Oval"
+            
+        # Oval: Balanced. Forehead slightly wider than jaw, but less than cheeks.
+        # "An ideal face shape" according to diagram
         else:
-             shape = "Oval"
+            # Differentiating Oval from mild Heart/Diamond
+            if jaw_cheek_ratio > 0.85:
+                shape = "Square" # Soft Square
+            else:
+                shape = "Oval"
+
+    # Debug
+    print(f"📐 FACE SHAPE DEBUG: L/W={length_ratio:.2f}, J/C={jaw_cheek_ratio:.2f}, F/C={forehead_cheek_ratio:.2f} -> {shape}")
 
     return shape
 
@@ -140,28 +166,65 @@ def classify_gender_geometric(landmarks, width, height, image=None):
             # Ratio
             texture_ratio = var_chin / var_cheek if var_cheek > 0 else 1
             
-            # If chin is much rougher -> Beard
-            if texture_ratio > 1.2:
+            # --- MUSTACHE CHECK (To validate Beard) ---
+            # Shadows usually fall on chin, but rarely on upper lip (mustache zone)
+            # If both are rough -> Real Hair. If only chin is rough -> Shadow.
+            mustache_indices = [164, 393, 321, 335, 292, 411, 264, 2, 326, 340, 416, 435, 367, 364, 433, 371] # Approx upper lip
+            mask_stache = np.zeros_like(gray)
+            pts_stache = np.array([get_pt(i) for i in mustache_indices], dtype=np.int32)
+            cv2.fillPoly(mask_stache, [pts_stache], 255)
+            
+            mean_m, std_m = cv2.meanStdDev(gray, mask=mask_stache)
+            stache_var = np.var(cv2.Laplacian(gray, cv2.CV_64F)[mask_stache > 0])
+            stache_ratio = stache_var / var_cheek if var_cheek > 0 else 1
+            
+            # Smart Beard Logic: Requires BOTH Chin and Mustache roughness (or extreme chin roughness)
+            if (texture_ratio > 1.3 and stache_ratio > 1.2) or texture_ratio > 3.5:
                  beard_score = 1
             
-            print(f"🧬 BEARD DEBUG: ChinVar={var_chin:.1f}, CheekVar={var_cheek:.1f}, Ratio={texture_ratio:.2f}")
+            print(f"🧬 BEARD DEBUG: Chin={texture_ratio:.2f}, Stache={stache_ratio:.2f} -> Beard={beard_score}")
 
         except Exception as e:
             print(f"⚠️ Beard Check Failed: {e}")
 
-    # --- SCORING & VOTING ---
-    score = 0
-    # Adjusted Thresholds
-    if jaw_ratio > 0.82: score += 1      # Was 0.85
-    if chin_ratio > 0.30: score += 1     # Was 0.32
-    if lip_ratio < 0.055: score += 1     # Was 0.05
-    if nose_ratio > 0.27: score += 1     # Was 0.28
-    if beard_score > 0: score += 1.5     # Beard is strong signal
-
-    pred = "Male" if score >= 2 else "Female"
+    # --- 3. EYEBROW THICKNESS CHECK (Dimorphic Trait) ---
+    # Men usually have thicker eyebrows relative to eye size
+    eyebrow_h = dist(get_coords(65), get_coords(158)) + dist(get_coords(295), get_coords(385))
+    eye_h = dist(get_coords(159), get_coords(145)) + dist(get_coords(386), get_coords(374))
+    brow_ratio = eyebrow_h / eye_h if eye_h > 0 else 0
     
-    # Strong Override
-    if jaw_ratio > 0.95: pred = "Male"
+    # --- SCORING & VOTING (Balanced Model) ---
+    score = 0
+    
+    # 1. Jaw Ratio (Structure)
+    if jaw_ratio > 0.95: score += 1 # Standardized threshold
+    
+    # 2. Chin (Width)
+    if chin_ratio > 0.40: score += 1     
+    
+    # 3. Lips (Thinness)
+    if lip_ratio < 0.040: score += 1     
+    
+    # 4. Nose (Width)
+    if nose_ratio > 0.32: score += 1 
+    
+    # 5. Eyebrows (Thickness) - NEW
+    if brow_ratio > 0.8: score += 1
+    
+    # 6. Beard (Texture)
+    # Strong indicator, adds 2 points
+    if beard_score > 0: score += 2
+
+    # SCORE ANALYSIS
+    # Max Score = 7 (5 traits + 2 for beard)
+    # Threshold = 3 (Balanced)
+    
+    print(f"🧬 GENDER DEBUG: Jaw={jaw_ratio:.2f} Lip={lip_ratio:.3f} Brow={brow_ratio:.2f} Beard={beard_score} -> Score={score}")
+
+    pred = "Male" if score >= 3 else "Female" 
+    
+    # Removed dangerous override for widespread jaws (women can have strong jaws)
+    # if jaw_ratio > 0.95: pred = "Male"
     
     print(f"🧬 GENDER RESULT: Jaw={jaw_ratio:.2f}, Chin={chin_ratio:.2f}, Lip={lip_ratio:.3f}, Nose={nose_ratio:.2f}, Beard={beard_score} -> Score={score} -> {pred}")
     return pred
@@ -219,11 +282,35 @@ def analyze_skin_cv(image, landmarks):
     oil_calibrated = calibrate(oil_ratio, mid=0.08, k=25)
 
     # --- 3. TEXTURE (Roughness on Cheeks) ---
+    # --- 3. TEXTURE (Advanced Entropy Analysis for Clinical Accuracy) ---
     gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # Method A: Laplacian (Edge Detection)
     edges = cv2.Laplacian(gray_img, cv2.CV_64F)
     cheek_edges = edges[mask_cheeks > 0]
     variance = np.var(cheek_edges) if cheek_edges.size > 0 else 0
-    texture_calibrated = 1.0 / (1.0 + np.exp(-0.01 * (variance - 400)))
+    
+    # Method B: Shannon Entropy (Statistical Texture)
+    # Higher entropy = more chaos (roughness/pores)
+    # Lower entropy = uniform (smooth skin)
+    def calc_entropy(roi_vals):
+        if roi_vals.size == 0: return 0
+        hist, _ = np.histogram(roi_vals, bins=256, range=(0, 256), density=True)
+        hist = hist[hist > 0]
+        return -np.sum(hist * np.log2(hist))
+
+    cheek_pixels = gray_img[mask_cheeks > 0]
+    entropy = calc_entropy(cheek_pixels)
+    
+    # Hybrid Score: Combine Variance (Edges) + Entropy (chaos)
+    # Variance typical range: 100-1000. Entropy typical range: 5-8.
+    
+    # Calibrate Entropy: > 7.5 is rough, < 6.0 is smooth
+    entropy_score = calibrate(entropy, mid=7.0, k=2)
+    var_score = calibrate(variance, mid=400, k=0.01)
+    
+    # Weighted Average (Entropy is more robust to lighting than Variance)
+    texture_calibrated = (0.6 * entropy_score) + (0.4 * var_score)
 
     return {
         "acne": float(round(acne_calibrated, 2)),

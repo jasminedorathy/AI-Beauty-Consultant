@@ -6,10 +6,12 @@ import Signup from "./auth/Signup";
 
 import AnalyzePage from "./features/analysis/AnalyzePage";
 import HistoryPage from "./features/history/HistoryPage";
+import TrendsPage from "./features/history/TrendsPage";
 
 import LiveAnalyzePage from "./features/camera/LiveAnalyzePage";
 import HairStyling from "./features/styling/HairStyling";
 import NailStyling from "./features/styling/NailStyling";
+import ServicesPage from "./features/services/ServicesPage";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import DashboardLayout from "./layout/DashboardLayout";
@@ -40,8 +42,9 @@ function App() {
           <Route path="live" element={<LiveAnalyzePage />} />
           <Route path="hair" element={<HairStyling />} />
           <Route path="nails" element={<NailStyling />} />
+          <Route path="services" element={<ServicesPage />} />
           <Route path="history" element={<HistoryPage />} />
-          <Route path="trends" element={<div>Trends Coming Soon</div>} />
+          <Route path="trends" element={<TrendsPage />} />
         </Route>
 
       </Routes>

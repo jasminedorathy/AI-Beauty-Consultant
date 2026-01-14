@@ -36,8 +36,14 @@ export const analyzeImage = async (formData) => {
 };
 
 // HISTORY
-export const fetchHistory = () => {
+export const getHistory = () => {
   return api.get("/history");
+};
+
+// CHAT
+export const sendChat = async (message) => {
+  const res = await api.post("/chat", { message });
+  return res.data;
 };
 
 export default api;

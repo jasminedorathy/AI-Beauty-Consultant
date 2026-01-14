@@ -129,7 +129,7 @@ const Login = () => {
         </p>
 
         <div className="mt-auto pt-10 text-xs text-slate-400">
-          © 2024 AI Beauty Consultant. All rights reserved.
+          © 2026 AI Beauty Consultant. All rights reserved.
         </div>
       </div>
 

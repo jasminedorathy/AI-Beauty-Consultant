@@ -140,7 +140,7 @@ const Signup = () => {
         </p>
 
         <div className="mt-auto pt-6 text-xs text-slate-400">
-          © 2024 AI Beauty Consultant. All rights reserved.
+          © 2026I Beauty Consultant. All rights reserved.
         </div>
       </div>
 

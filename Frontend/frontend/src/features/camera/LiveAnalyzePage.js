@@ -102,6 +102,12 @@ const LiveAnalyzePage = () => {
       canvas.toBlob(res, "image/jpeg")
     );
 
+    if (!blob) {
+      setError("Failed to capture image. Please try again.");
+      setLoading(false);
+      return;
+    }
+
     // Create a URL for preview
     const previewUrl = URL.createObjectURL(blob);
     setCapturedImage(previewUrl);

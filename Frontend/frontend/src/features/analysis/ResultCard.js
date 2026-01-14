@@ -142,19 +142,24 @@ const ResultCard = ({ data, image, annotatedImage }) => {
 
           <h4 className="text-xl font-bold text-gray-800 mb-6">Skin Health Analysis</h4>
           <div className="space-y-6 relative z-10">
-            {Object.entries(skinScores).map(([key, value]) => (
+            {Object.entries(skinScores).map(([key, value], idx) => (
               <div key={key} className="group">
                 <div className="flex justify-between mb-2 items-end">
-                  <span className="text-sm font-semibold text-gray-500 uppercase tracking-widest">{key}</span>
-                  <span className={`text-lg font-black ${getScoreColor(value)}`}>
-                    {Math.round(value * 100)}%
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    {key === "acne" ? "🔴" : key === "oiliness" ? "✨" : key === "texture" ? "🧱" : "🔹"}
+                    {key}
+                  </span>
+                  <span className={`text-2xl font-black ${getScoreColor(value)} drop-shadow-sm`}>
+                    {Math.round(value * 100)}<span className="text-sm text-gray-400 ml-0.5">%</span>
                   </span>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
+                <div className="w-full bg-gray-100/50 rounded-full h-4 p-1 shadow-inner border border-gray-100">
                   <div
-                    className={`h-full rounded-full transition-all duration-1000 ease-out group-hover:brightness-110 ${getProgressColor(value)}`}
+                    className={`h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden group-hover:shadow-lg ${getProgressColor(value)}`}
                     style={{ width: `${value * 100}%` }}
-                  ></div>
+                  >
+                    <div className="absolute inset-0 bg-white/30 animate-pulse-slow"></div>
+                  </div>
                 </div>
               </div>
             ))}
@@ -167,12 +172,43 @@ const ResultCard = ({ data, image, annotatedImage }) => {
             <span className="mr-2 text-2xl">✨</span> Personalized Routine
           </h4>
           <ul className="space-y-4">
-            {recommendations.map((rec, i) => (
-              <li key={i} className="flex items-start bg-white/80 p-4 rounded-xl shadow-sm border border-indigo-50/50 hover:shadow-md transition-shadow">
-                <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-green-100 text-green-600 text-xs font-bold mr-3 mt-0.5 shrink-0 shadow-sm">✓</span>
-                <span className="text-gray-700 font-medium leading-relaxed">{rec}</span>
-              </li>
-            ))}
+            {recommendations.map((rec, i) => {
+              // Smart Icon Logic
+              let icon = "✨";
+              if (rec.toLowerCase().includes("cleanser") || rec.toLowerCase().includes("wash")) icon = "🧴";
+              else if (rec.toLowerCase().includes("sunscreen") || rec.toLowerCase().includes("spf")) icon = "☀️";
+              else if (rec.toLowerCase().includes("moisturizer") || rec.toLowerCase().includes("hydrate")) icon = "💧";
+              else if (rec.toLowerCase().includes("exfoliate") || rec.toLowerCase().includes("scrub")) icon = "🧼";
+              else if (rec.toLowerCase().includes("serum")) icon = "🧪";
+              else if (rec.toLowerCase().includes("mask")) icon = "🧖‍♀️";
+              else if (rec.toLowerCase().includes("shav")) icon = "🪒";
+              else if (rec.toLowerCase().includes("beard")) icon = "🧔";
+
+              // Bold Keywords Logic
+              const formatRec = (text) => {
+                const parts = text.split(/(\*\*.*?\*\*)/g);
+                return parts.map((part, index) =>
+                  part.startsWith('**') && part.endsWith('**')
+                    ? <strong key={index} className="text-indigo-900">{part.slice(2, -2)}</strong>
+                    : part
+                );
+              };
+
+              return (
+                <li
+                  key={i}
+                  className="flex items-start bg-white/60 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-indigo-50 hover:bg-white hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
+                  style={{ animationDelay: `${i * 150}ms` }}
+                >
+                  <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 text-lg mr-4 shadow-sm border border-white">
+                    {icon}
+                  </span>
+                  <span className="text-gray-700 font-medium leading-relaxed mt-1">
+                    {formatRec(rec)}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </div>
 
