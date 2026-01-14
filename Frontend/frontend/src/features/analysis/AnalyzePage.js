@@ -56,15 +56,35 @@ const AnalyzePage = () => {
     }
   };
 
+  // Determine Theme based on Gender
+  const isMale = result?.gender === "Male";
+  const theme = isMale
+    ? {
+      bg: "from-slate-800 to-blue-900",
+      text: "from-blue-400 to-teal-400",
+      button: "from-blue-600 to-teal-600",
+      badge: "bg-blue-100 text-blue-800"
+    }
+    : {
+      bg: "from-purple-600 to-pink-600", // Header Text Gradient
+      text: "from-purple-600 to-pink-600",
+      button: "from-purple-600 to-pink-600",
+      badge: "bg-pink-100 text-pink-800"
+    };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6 flex flex-col items-center">
 
       {/* Header */}
       <div className="text-center mb-10">
-        <h2 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mb-2">
-          AI Beauty Analysis
+        <h2 className={`text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r ${theme.text} mb-2`}>
+          {isMale ? "Gentlemen's Skin Analysis" : "AI Beauty Analysis"}
         </h2>
-        <p className="text-gray-500 text-lg">Upload a clear photo to reveal your personalized skin insights.</p>
+        <p className="text-gray-500 text-lg">
+          {isMale
+            ? "Advanced grooming insights tailored for men."
+            : "Upload a clear photo to reveal your personalized skin insights."}
+        </p>
       </div>
 
       {/* Main Content Area */}
@@ -84,6 +104,12 @@ const AnalyzePage = () => {
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
                   <span className="text-white font-medium">Change Image</span>
                 </div>
+                {/* Gender Badge Overlay */}
+                {result?.gender && (
+                  <div className={`absolute top-4 right-4 px-4 py-1 rounded-full text-xs font-bold shadow-lg uppercase tracking-wide ${theme.badge}`}>
+                    {result.gender}
+                  </div>
+                )}
                 <input
                   type="file"
                   accept="image/*"
@@ -109,7 +135,7 @@ const AnalyzePage = () => {
             className={`w-full max-w-xs py-3.5 px-6 rounded-xl font-bold text-white text-lg tracking-wide shadow-lg transform transition-all duration-200
                     ${loading || !image
                 ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-105 hover:shadow-xl'
+                : `bg-gradient-to-r ${theme.button} hover:scale-105 hover:shadow-xl`
               }`}
           >
             {loading ? (
@@ -135,6 +161,7 @@ const AnalyzePage = () => {
               }}
               image={preview}
               annotatedImage={result.annotated_image_url}
+              gender={result.gender}
             />
           </div>
         )}

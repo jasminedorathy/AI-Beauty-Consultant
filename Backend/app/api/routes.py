@@ -5,6 +5,9 @@ from app.pipeline.face_detection import detect_faces
 from app.ml.predictor import predict_skin_conditions
 from app.auth.jwt_handler import verify_access_token
 from app.mongodb.collections import analysis_collection
+from app.ml.analysis_cv import calculate_face_shape, analyze_skin_cv, generate_annotated_image
+from app.ml.consultant import generate_consultation
+import cv2
 import os
 import uuid
 from datetime import datetime
@@ -37,6 +40,7 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
         if len(faces) == 0:
             return {
                 "faceShape": "N/A",
+                "gender": "N/A",
                 "skinScores": {},
                 "recommendations": [],
                 "error": "No face detected. Please ensure the face is clearly visible."
@@ -49,33 +53,22 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
         
         x, y, w, h = bbox
         
-        # 1. Face Shape Analysis (Geometric)
-        from app.ml.analysis_cv import calculate_face_shape, analyze_skin_cv
+        # 1. Face Shape & Gender Analysis
+        # Ensure we have the new import
+        from app.ml.analysis_cv import classify_gender_geometric
+        
         face_shape = calculate_face_shape(landmarks, img.shape[1], img.shape[0])
+        gender = classify_gender_geometric(landmarks, img.shape[1], img.shape[0], img)
 
         # 2. Skin Analysis (OpenCV)
         face_img = img[y:y+h, x:x+w]
-        # We pass the full image and landmarks for potential context, 
-        # but for now analyze_skin_cv uses ROI inside face_img if we passed it, 
-        # or we can pass face_img directly. 
-        # Let's pass face_img to focus analysis on the face crop.
         skin_scores = analyze_skin_cv(face_img, landmarks) 
-        
-        # Generate recommendations based on REAL CV scores
-        recommendations = []
-        if skin_scores.get("acne", 0) > 0.3:
-            recommendations.append("High redness detected. Consider soothing ingredients like Aloe or Niacinamide.")
-        if skin_scores.get("oiliness", 0) > 0.4:
-            recommendations.append("Shiny zones detected. Use oil-free moisturizers and clay masks.")
-        if skin_scores.get("texture", 0) > 0.5: # Roughness
-            recommendations.append("Uneven texture detected. Gentle exfoliation with AHAs might help.")
-        
-        if not recommendations:
-            recommendations.append("Your skin looks balanced! Maintain your current routine.")
+
+        # 5. Generate Consultant Recommendations (Pass Gender)
+        recommendations = generate_consultation(face_shape, skin_scores, gender)
 
         # --- GENERATE ANNOTATED IMAGE ---
-        from app.ml.analysis_cv import generate_annotated_image
-        annotated_img = generate_annotated_image(img, landmarks)
+        annotated_img = generate_annotated_image(img, landmarks, gender)
         
         # --- SAVE TO DB & DISK ---
         try:
@@ -103,6 +96,7 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
                 "image_url": image_url,
                 "annotated_image_url": annotated_image_url,
                 "face_shape": face_shape,
+                "gender": gender,
                 "skin_scores": skin_scores,
                 "recommendations": recommendations,
                 "created_at": datetime.utcnow()
@@ -112,14 +106,13 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
 
         except Exception as db_err:
             print(f"⚠️ Failed to save to DB: {db_err}")
-            # Ensure we still return values even if DB fails
             annotated_image_url = None
             if 'image_url' not in locals():
                  image_url = None
-            # We don't block the response if DB fails, but we log it.
 
         return {
             "faceShape": face_shape,
+            "gender": gender,
             "skinScores": skin_scores,
             "recommendations": recommendations,
             "boundingBox": {"x": x, "y": y, "w": w, "h": h},
