@@ -79,7 +79,7 @@ const HistoryPage = () => {
                         }
                         color="blue"
                       />
-                      {scan.gender && <Badge label={scan.gender} color={scan.gender === "Male" ? "slate" : "pink"} />}
+                      {scan.gender && <Badge label={scan.gender} color={scan.gender === "Male" ? "slate" : "teal"} />}
                     </div>
                   </div>
 
@@ -124,7 +124,7 @@ const HistoryPage = () => {
 const Badge = ({ label, color }) => {
   const colors = {
     blue: "bg-blue-100 text-blue-700",
-    pink: "bg-pink-100 text-pink-700",
+    teal: "bg-teal-100 text-teal-700",
     slate: "bg-slate-100 text-slate-700",
     green: "bg-green-100 text-green-700"
   };

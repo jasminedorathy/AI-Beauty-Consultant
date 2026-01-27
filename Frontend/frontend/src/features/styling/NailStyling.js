@@ -28,7 +28,7 @@ const NailStyling = () => {
         <div className="min-h-screen bg-gray-50 p-6 animate-fade-in-up">
             <div className="max-w-6xl mx-auto">
                 <div className="text-center mb-10">
-                    <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600 mb-2">Nail Art Studio 💅</h1>
+                    <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-purple-600 mb-2">Nail Art Studio 💅</h1>
                     <p className="text-gray-500 text-lg">Curated palettes and designs for your hands.</p>
                 </div>
 
@@ -42,7 +42,7 @@ const NailStyling = () => {
                             <div className="flex gap-3">
                                 {["Light", "Medium", "Dark"].map(tone => (
                                     <button key={tone} onClick={() => setSkinTone(tone)} className={`flex flex-col items-center gap-1 group`}>
-                                        <div className={`w-8 h-8 rounded-full border-2 transition-all ${skinTone === tone ? "border-pink-500 scale-125" : "border-transparent opacity-50 hover:opacity-100"}`}
+                                        <div className={`w-8 h-8 rounded-full border-2 transition-all ${skinTone === tone ? "border-teal-500 scale-125" : "border-transparent opacity-50 hover:opacity-100"}`}
                                             style={{ backgroundColor: tone === "Light" ? "#F3E5DC" : tone === "Medium" ? "#EAC096" : "#8D5524" }}>
                                         </div>
                                     </button>
@@ -60,7 +60,7 @@ const NailStyling = () => {
                                     <button
                                         key={occ}
                                         onClick={() => setOccasion(occ)}
-                                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${occasion === occ ? "bg-pink-100 text-pink-700 shadow-sm" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${occasion === occ ? "bg-teal-100 text-teal-700 shadow-sm" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}
                                     >
                                         {occ}
                                     </button>
@@ -115,7 +115,7 @@ const NailStyling = () => {
                             { name: "Stiletto", desc: "Bold & Dramatic", icon: "https://images.unsplash.com/photo-1596462502278-27bfdd403348?auto=format&fit=crop&w=400&q=80" },
                             { name: "Oval", desc: "Natural Look", icon: "https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&w=400&q=80" }
                         ].map((shape, i) => (
-                            <div key={i} className="flex flex-col items-center gap-3 p-4 hover:bg-pink-50 rounded-2xl transition-colors cursor-pointer group">
+                            <div key={i} className="flex flex-col items-center gap-3 p-4 hover:bg-teal-50 rounded-2xl transition-colors cursor-pointer group">
                                 <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform overflow-hidden border-2 border-white">
                                     <img src={shape.icon} alt={shape.name} className="w-full h-full object-cover" />
                                 </div>

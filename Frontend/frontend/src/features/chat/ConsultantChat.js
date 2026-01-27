@@ -46,7 +46,7 @@ const ConsultantChat = () => {
                 <div className="bg-white/90 backdrop-blur-xl w-80 md:w-96 h-[500px] rounded-2xl shadow-2xl border border-white/50 flex flex-col mb-4 animate-fade-in-up overflow-hidden">
 
                     {/* Header */}
-                    <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-4 flex justify-between items-center">
+                    <div className="bg-gradient-to-r from-purple-600 to-teal-600 p-4 flex justify-between items-center">
                         <div className="flex items-center gap-2">
                             <span className="text-2xl">🤖</span>
                             <div>
@@ -70,8 +70,8 @@ const ConsultantChat = () => {
                             >
                                 <div
                                     className={`max-w-[80%] rounded-2xl p-3 text-sm shadow-sm leading-relaxed whitespace-pre-line ${msg.sender === "user"
-                                            ? "bg-purple-600 text-white rounded-br-none"
-                                            : "bg-white text-gray-700 border border-gray-100 rounded-bl-none"
+                                        ? "bg-purple-600 text-white rounded-br-none"
+                                        : "bg-white text-gray-700 border border-gray-100 rounded-bl-none"
                                         }`}
                                 >
                                     {msg.text}
@@ -114,7 +114,7 @@ const ConsultantChat = () => {
             {/* Floating Button */}
             <button
                 onClick={toggleChat}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 rounded-full shadow-[0_0_20px_rgba(168,85,247,0.4)]
+                className="bg-gradient-to-r from-purple-600 to-teal-600 text-white p-4 rounded-full shadow-[0_0_20px_rgba(168,85,247,0.4)]
                      hover:shadow-[0_0_30px_rgba(168,85,247,0.6)] hover:scale-110 transition-all duration-300 group z-50 border-4 border-white"
             >
                 <span className="text-3xl group-hover:hidden">💬</span>

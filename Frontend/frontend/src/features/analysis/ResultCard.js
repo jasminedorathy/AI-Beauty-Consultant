@@ -88,11 +88,11 @@ const ResultCard = ({ data, image, annotatedImage }) => {
 
       {/* Image Section - Interactive Card */}
       <div className="group relative bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-2xl border border-white/50 hover:shadow-purple-500/20 transition-all duration-500">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-100/50 to-pink-100/50 rounded-3xl -z-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-100/50 to-teal-100/50 rounded-3xl -z-10"></div>
 
         <div className="flex justify-between items-center mb-6">
           <h4 className="text-xl font-bold text-slate-800 flex items-center">
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-teal-600">
               {showAnnotated ? "AI Diagnostic View" : "Original Image"}
             </span>
           </h4>
@@ -124,7 +124,7 @@ const ResultCard = ({ data, image, annotatedImage }) => {
           {/* Face Shape Badge Overlay */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md px-6 py-2 rounded-full shadow-lg border border-purple-100">
             <span className="text-sm text-gray-500 mr-2 uppercase tracking-wider font-semibold">Shape</span>
-            <span className="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
+            <span className="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-teal-600">
               {faceShape}
             </span>
           </div>

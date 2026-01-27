@@ -66,10 +66,10 @@ const AnalyzePage = () => {
       badge: "bg-blue-100 text-blue-800"
     }
     : {
-      bg: "from-purple-600 to-pink-600", // Header Text Gradient
-      text: "from-purple-600 to-pink-600",
-      button: "from-purple-600 to-pink-600",
-      badge: "bg-pink-100 text-pink-800"
+      bg: "from-purple-600 to-teal-600", // Header Text Gradient
+      text: "from-purple-600 to-teal-600",
+      button: "from-purple-600 to-teal-600",
+      badge: "bg-teal-100 text-teal-800"
     };
 
   return (

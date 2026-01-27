@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "./auth/Login";
 import Signup from "./auth/Signup";
+import LandingPage from "./pages/LandingPage";
+import DashboardHome from "./pages/DashboardHome";
 
 import AnalyzePage from "./features/analysis/AnalyzePage";
 import HistoryPage from "./features/history/HistoryPage";
@@ -21,8 +23,8 @@ function App() {
     <BrowserRouter>
       <Routes>
 
-        {/* Default */}
-        <Route path="/" element={<Navigate to="/signup" />} />
+        {/* Landing Page */}
+        <Route path="/" element={<LandingPage />} />
 
         {/* Public */}
         <Route path="/signup" element={<Signup />} />
@@ -37,7 +39,7 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<AnalyzePage />} />
+          <Route index element={<DashboardHome />} />
           <Route path="analyze" element={<AnalyzePage />} />
           <Route path="live" element={<LiveAnalyzePage />} />
           <Route path="hair" element={<HairStyling />} />

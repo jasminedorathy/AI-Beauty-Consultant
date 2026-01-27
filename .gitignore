@@ -1,31 +1,106 @@
-# ===== Python =====
-venv/
+# Python
 __pycache__/
-*.pyc
-.env
-*.env
-.pytest_cache/
-
-# ===== Node =====
-node_modules/
-npm-debug.log
-yarn-error.log
-
-# ===== Build =====
-build/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
 dist/
-.next/
+build/
+*.egg
 
-# ===== User Data / Uploads =====
-Backend/static/uploads/
-*.jpg
-*.png
-# Keep the directory structure but ignore files
-!Backend/static/uploads/.gitkeep
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+package-lock.json
 
-# ===== OS & Editor =====
-.DS_Store
-Thumbs.db
+# Build
+/build
+/dist
+/.next
+/out
+
+# IDE
 .vscode/
 .idea/
-.gemini/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large Files - Datasets and Models
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.pt
+*.pth
+*.onnx
+*.pb
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.csv
+*.npy
+*.npz
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.webp
+*.mp4
+*.avi
+*.mov
+
+# Backend specific
+Backend/venv/
+Backend/env/
+Backend/datasets/
+Backend/models/
+Backend/data/
+Backend/source_data/
+Backend/static/uploads/
+Backend/*.zip
+Backend/*.h5
+Backend/*.pkl
+Backend/*.csv
+Backend/debug_*.jpg
+Backend/test_*.jpg
+
+# Frontend specific
+Frontend/frontend/node_modules/
+Frontend/frontend/build/
+Frontend/frontend/.env.local
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+.cache/
+temp/
+tmp/

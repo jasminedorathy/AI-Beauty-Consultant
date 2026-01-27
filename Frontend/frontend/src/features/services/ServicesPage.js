@@ -73,7 +73,7 @@ const ServicesPage = () => {
                     <button
                         onClick={() => setActiveTab("Female")}
                         className={`flex items-center gap-2 px-8 py-3 rounded-full text-sm font-bold transition-all duration-300 ${activeTab === "Female"
-                            ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-lg"
+                            ? "bg-gradient-to-r from-teal-500 to-purple-500 text-white shadow-lg"
                             : "text-gray-500 hover:bg-gray-50"
                             }`}
                     >
