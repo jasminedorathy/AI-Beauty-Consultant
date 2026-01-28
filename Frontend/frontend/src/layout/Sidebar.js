@@ -15,19 +15,30 @@ const Sidebar = () => {
   return (
     <aside className="w-72 bg-white/80 backdrop-blur-xl shadow-2xl hidden md:flex flex-col z-20 font-sans border-r border-white/50 animate-slide-in-left">
 
-      {/* Brand Logo */}
-      <div className="p-8 pb-4 animate-fade-in-up">
-        <div className="flex items-center gap-3 group">
-          <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-teal-600 rounded-xl flex items-center justify-center text-white text-2xl shadow-lg group-hover:scale-110 transition-transform">
-            ✨
+      {/* Logo */}
+      <div className="p-6 border-b border-white/10">
+        <Link to="/dashboard" className="flex items-center gap-3 group">
+          <div className="relative">
+            {/* Logo Image with Gradient Border */}
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-600 to-teal-600 p-0.5 group-hover:scale-110 transition-transform duration-300">
+              <div className="w-full h-full rounded-xl overflow-hidden bg-white flex items-center justify-center">
+                <img
+                  src="/logo.png"
+                  alt="AI Beauty Consultant"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+            {/* Pulse Animation */}
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-600 to-teal-600 opacity-0 group-hover:opacity-20 group-hover:animate-ping"></div>
           </div>
           <div>
-            <h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-teal-600 tracking-tight">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-teal-600 bg-clip-text text-transparent">
               AI Beauty
             </h1>
-            <span className="text-xs font-medium text-gray-400 tracking-wide">Consultant</span>
+            <p className="text-xs text-gray-500">Consultant</p>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Navigation */}
