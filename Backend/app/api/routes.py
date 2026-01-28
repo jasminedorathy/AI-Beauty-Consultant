@@ -198,14 +198,32 @@ class ChatRequest(BaseModel):
     message: str
 
 def load_api_key():
-    # Simple .env loader since python-dotenv might not be present
-    try:
-        with open(".env", "r") as f:
-            for line in f:
-                if line.startswith("OPENROUTER_API_KEY"):
-                    return line.strip().split("=")[1]
-    except:
-        return None
+    """Load OpenRouter API key from .env file"""
+    import os
+    
+    # Try multiple possible locations for .env file
+    possible_paths = [
+        os.path.join(os.path.dirname(__file__), "../../.env"),  # Backend/.env
+        os.path.join(os.path.dirname(__file__), "../../../.env"),  # Root .env
+        ".env",  # Current directory
+        "Backend/.env"  # From root
+    ]
+    
+    for env_path in possible_paths:
+        try:
+            abs_path = os.path.abspath(env_path)
+            if os.path.exists(abs_path):
+                print(f"📄 Found .env file at: {abs_path}")
+                with open(abs_path, "r") as f:
+                    for line in f:
+                        if line.startswith("OPENROUTER_API_KEY"):
+                            key = line.strip().split("=", 1)[1]
+                            print(f"✅ Loaded OpenRouter API key: {key[:20]}...")
+                            return key
+        except Exception as e:
+            continue
+    
+    print("⚠️ No OpenRouter API key found in .env file")
     return None
 
 
