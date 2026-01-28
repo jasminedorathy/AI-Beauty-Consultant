@@ -1,60 +1,11 @@
-
-// const ResultCard = ({ data, image }) => {
-//   if (!data) {
-//     return <div className="bg-white rounded-xl shadow p-6">No analysis data available.</div>;
-//   }
-
-//   const { faceShape, skinScores, recommendations } = data;
-
-//   return (
-//     <div className="bg-white rounded-xl shadow p-6">
-//       <h3 className="text-xl font-semibold mb-4">
-//         Face Shape: <span className="text-blue-600">{faceShape || 'N/A'}</span>
-//       </h3>
-
-//       <h4 className="font-semibold mb-3">Skin Scores</h4>
-//       {skinScores && typeof skinScores === 'object' ? (
-//         Object.entries(skinScores).map(([key, value]) => (
-//           <div key={key} className="mb-3">
-//             <div className="flex justify-between text-sm">
-//               <span className="capitalize">{key}</span>
-//               <span>{Math.round(value * 100)}%</span>
-//             </div>
-//             <div className="h-2 bg-gray-200 rounded">
-//               <div
-//                 className="h-2 bg-blue-600 rounded"
-//                 style={{ width: `${value * 100}%` }}
-//               />
-//             </div>
-//           </div>
-//         ))
-//       ) : (
-//         <p>No skin scores available.</p>
-//       )}
-
-//       <h4 className="font-semibold mt-6 mb-2">Recommendations</h4>
-//       {recommendations && Array.isArray(recommendations) ? (
-//         <ul className="list-disc list-inside text-gray-600">
-//           {recommendations.map((rec, i) => (
-//             <li key={i}>{rec}</li>
-//           ))}
-//         </ul>
-//       ) : (
-//         <p>No recommendations available.</p>
-//       )}
-//     </div>
-//   );
-// };
-
-// export default ResultCard;
 import React from 'react';
 
 const ResultCard = ({ data, image, annotatedImage }) => {
   const [showAnnotated, setShowAnnotated] = React.useState(true);
 
-  if (!data) return null; // Should not happen if parent handles it, but safe check
+  if (!data) return null;
 
-  const { faceShape, skinScores, recommendations, error } = data;
+  const { faceShape, skinScores, recommendations, error, colorAnalysis, gender } = data;
 
   if (error) {
     return (
@@ -72,154 +23,217 @@ const ResultCard = ({ data, image, annotatedImage }) => {
 
   // Helper for score color
   const getScoreColor = (value) => {
-    if (value > 0.7) return "text-red-500";
-    if (value > 0.4) return "text-yellow-500";
-    return "text-green-500";
+    if (value > 0.7) return "text-red-600";
+    if (value > 0.4) return "text-amber-600";
+    return "text-emerald-600";
   };
 
   const getProgressColor = (value) => {
-    if (value > 0.7) return "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]";
-    if (value > 0.4) return "bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]";
-    return "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]";
+    if (value > 0.7) return "bg-gradient-to-r from-red-500 to-red-600";
+    if (value > 0.4) return "bg-gradient-to-r from-amber-500 to-amber-600";
+    return "bg-gradient-to-r from-emerald-500 to-emerald-600";
+  };
+
+  const getScoreBadge = (value) => {
+    if (value > 0.7) return { text: "High", color: "bg-red-100 text-red-700 border-red-300" };
+    if (value > 0.4) return { text: "Moderate", color: "bg-amber-100 text-amber-700 border-amber-300" };
+    return { text: "Low", color: "bg-emerald-100 text-emerald-700 border-emerald-300" };
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-12 animate-fade-in-up">
+    <div className="max-w-7xl mx-auto mt-12 animate-fade-in-up">
 
-      {/* Image Section - Interactive Card */}
-      <div className="group relative bg-white/80 backdrop-blur-xl p-6 rounded-3xl shadow-2xl border border-white/50 hover:shadow-purple-500/20 transition-all duration-500">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-100/50 to-teal-100/50 rounded-3xl -z-10"></div>
-
-        <div className="flex justify-between items-center mb-6">
-          <h4 className="text-xl font-bold text-slate-800 flex items-center">
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-teal-600">
-              {showAnnotated ? "AI Diagnostic View" : "Original Image"}
-            </span>
-          </h4>
-
-          {annotatedImage && (
-            <div className="flex bg-gray-100 p-1 rounded-lg">
-              <button
-                onClick={() => setShowAnnotated(false)}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${!showAnnotated ? 'bg-white shadow text-purple-700' : 'text-gray-500 hover:text-gray-700'}`}
-              >
-                Original
-              </button>
-              <button
-                onClick={() => setShowAnnotated(true)}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${showAnnotated ? 'bg-white shadow text-purple-700' : 'text-gray-500 hover:text-gray-700'}`}
-              >
-                AI View
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="relative w-full h-96 rounded-2xl overflow-hidden border border-white/60 shadow-inner bg-gray-50 group-hover:scale-[1.02] transition-transform duration-300">
-          <img
-            src={showAnnotated && annotatedImage ? annotatedImage : image}
-            alt="Analyzed Face"
-            className="w-full h-full object-contain"
-          />
-          {/* Face Shape Badge Overlay */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md px-6 py-2 rounded-full shadow-lg border border-purple-100">
-            <span className="text-sm text-gray-500 mr-2 uppercase tracking-wider font-semibold">Shape</span>
-            <span className="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-teal-600">
-              {faceShape}
-            </span>
+      {/* Header Section */}
+      <div className="bg-gradient-to-r from-purple-600 to-teal-600 rounded-t-3xl p-8 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold mb-2">
+              {gender === "Male" ? "Gentleman's Analysis" : "Beauty Analysis"} Report
+            </h2>
+            <p className="text-purple-100">Comprehensive AI-Powered Facial Assessment</p>
+          </div>
+          <div className="bg-white/20 backdrop-blur-md px-6 py-3 rounded-xl">
+            <div className="text-sm text-purple-100 mb-1">Face Shape</div>
+            <div className="text-2xl font-bold">{faceShape}</div>
           </div>
         </div>
       </div>
 
-      {/* Results Section */}
-      <div className="space-y-8">
+      {/* Main Content Grid */}
+      <div className="bg-white rounded-b-3xl shadow-2xl p-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-        {/* Skin Scores Card */}
-        <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" /></svg>
-          </div>
+          {/* Left Column - Image & Color Analysis */}
+          <div className="space-y-6">
 
-          <h4 className="text-xl font-bold text-gray-800 mb-6">Skin Health Analysis</h4>
-          <div className="space-y-6 relative z-10">
-            {skinScores && Object.keys(skinScores).length > 0 ? (
-              Object.entries(skinScores).map(([key, value], idx) => (
-                <div key={key} className="group">
-                  <div className="flex justify-between mb-2 items-end">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                      {key === "acne" ? "🔴" : key === "oiliness" ? "✨" : key === "texture" ? "🧱" : "🔹"}
-                      {key}
-                    </span>
-                    <span className={`text-2xl font-black ${getScoreColor(value)} drop-shadow-sm`}>
-                      {Math.round(value * 100)}<span className="text-sm text-gray-400 ml-0.5">%</span>
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-100/50 rounded-full h-4 p-1 shadow-inner border border-gray-100">
-                    <div
-                      className={`h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden group-hover:shadow-lg ${getProgressColor(value)}`}
-                      style={{ width: `${value * 100}%` }}
+            {/* Image Display */}
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-gray-800">Diagnostic View</h3>
+                {annotatedImage && (
+                  <div className="flex bg-white rounded-lg shadow-sm border border-gray-200">
+                    <button
+                      onClick={() => setShowAnnotated(false)}
+                      className={`px-4 py-2 rounded-l-lg text-sm font-medium transition-all ${!showAnnotated ? 'bg-purple-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
                     >
-                      <div className="absolute inset-0 bg-white/30 animate-pulse-slow"></div>
-                    </div>
+                      Original
+                    </button>
+                    <button
+                      onClick={() => setShowAnnotated(true)}
+                      className={`px-4 py-2 rounded-r-lg text-sm font-medium transition-all ${showAnnotated ? 'bg-purple-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      AI View
+                    </button>
                   </div>
+                )}
+              </div>
+
+              <div className="relative rounded-xl overflow-hidden bg-gray-900 shadow-lg">
+                <img
+                  src={showAnnotated && annotatedImage ? annotatedImage : image}
+                  alt="Analyzed Face"
+                  className="w-full h-auto object-contain"
+                />
+              </div>
+            </div>
+
+            {/* Color Analysis Card */}
+            {colorAnalysis && (
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-200">
+                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                  <span className="mr-2">🎨</span> Color Analysis
+                </h3>
+                <div className="space-y-3">
+                  {colorAnalysis.skin_tone && (
+                    <div className="flex items-center justify-between bg-white rounded-lg p-3 shadow-sm">
+                      <span className="text-sm font-medium text-gray-600">Skin Tone</span>
+                      <span className="font-semibold text-gray-800">{colorAnalysis.skin_tone}</span>
+                    </div>
+                  )}
+                  {colorAnalysis.undertone && (
+                    <div className="flex items-center justify-between bg-white rounded-lg p-3 shadow-sm">
+                      <span className="text-sm font-medium text-gray-600">Undertone</span>
+                      <span className="font-semibold text-gray-800 capitalize">{colorAnalysis.undertone}</span>
+                    </div>
+                  )}
+                  {colorAnalysis.eye_color && (
+                    <div className="flex items-center justify-between bg-white rounded-lg p-3 shadow-sm">
+                      <span className="text-sm font-medium text-gray-600">Eye Color</span>
+                      <span className="font-semibold text-gray-800">{colorAnalysis.eye_color}</span>
+                    </div>
+                  )}
+                  {colorAnalysis.hair_color && (
+                    <div className="flex items-center justify-between bg-white rounded-lg p-3 shadow-sm">
+                      <span className="text-sm font-medium text-gray-600">Hair Color</span>
+                      <span className="font-semibold text-gray-800">{colorAnalysis.hair_color}</span>
+                    </div>
+                  )}
+                  {colorAnalysis.season && (
+                    <div className="flex items-center justify-between bg-white rounded-lg p-3 shadow-sm">
+                      <span className="text-sm font-medium text-gray-600">Seasonal Palette</span>
+                      <span className="font-semibold text-purple-600">{colorAnalysis.season}</span>
+                    </div>
+                  )}
                 </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-center py-4">No skin analysis data available</p>
+              </div>
             )}
           </div>
+
+          {/* Right Column - Skin Analysis & Recommendations */}
+          <div className="space-y-6">
+
+            {/* Skin Health Analysis */}
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 border border-blue-200">
+              <h3 className="text-lg font-bold text-gray-800 mb-5 flex items-center">
+                <span className="mr-2">📊</span> Skin Health Metrics
+              </h3>
+
+              <div className="space-y-5">
+                {skinScores && Object.keys(skinScores).length > 0 ? (
+                  Object.entries(skinScores).map(([key, value]) => {
+                    const badge = getScoreBadge(value);
+                    return (
+                      <div key={key} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                        <div className="flex justify-between items-center mb-3">
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">
+                              {key === "acne" ? "🔴" : key === "oiliness" ? "✨" : "🧱"}
+                            </span>
+                            <div>
+                              <div className="font-bold text-gray-800 capitalize text-sm">{key}</div>
+                              <div className={`text-xs font-semibold px-2 py-0.5 rounded-full border inline-block mt-1 ${badge.color}`}>
+                                {badge.text}
+                              </div>
+                            </div>
+                          </div>
+                          <div className={`text-3xl font-black ${getScoreColor(value)}`}>
+                            {Math.round(value * 100)}
+                            <span className="text-sm text-gray-400 ml-1">%</span>
+                          </div>
+                        </div>
+
+                        <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+                          <div
+                            className={`h-full rounded-full transition-all duration-1000 ease-out ${getProgressColor(value)} shadow-lg`}
+                            style={{ width: `${value * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No skin analysis data available</p>
+                )}
+              </div>
+            </div>
+
+            {/* Recommendations */}
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-200">
+              <h3 className="text-lg font-bold text-gray-800 mb-5 flex items-center">
+                <span className="mr-2">✨</span> Personalized Routine
+              </h3>
+
+              <div className="space-y-3">
+                {recommendations && recommendations.length > 0 ? (
+                  recommendations.map((rec, i) => {
+                    let icon = "✨";
+                    if (rec.toLowerCase().includes("cleanser") || rec.toLowerCase().includes("wash")) icon = "🧴";
+                    else if (rec.toLowerCase().includes("sunscreen") || rec.toLowerCase().includes("spf")) icon = "☀️";
+                    else if (rec.toLowerCase().includes("moisturizer") || rec.toLowerCase().includes("hydrate")) icon = "💧";
+                    else if (rec.toLowerCase().includes("exfoliate") || rec.toLowerCase().includes("scrub")) icon = "🧼";
+                    else if (rec.toLowerCase().includes("serum")) icon = "🧪";
+                    else if (rec.toLowerCase().includes("mask")) icon = "🧖‍♀️";
+
+                    const formatRec = (text) => {
+                      const parts = text.split(/(\*\*.*?\*\*)/g);
+                      return parts.map((part, index) =>
+                        part.startsWith('**') && part.endsWith('**')
+                          ? <strong key={index} className="text-indigo-900">{part.slice(2, -2)}</strong>
+                          : part
+                      );
+                    };
+
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-start bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200"
+                      >
+                        <span className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-xl mr-3 shadow-sm">
+                          {icon}
+                        </span>
+                        <span className="text-gray-700 font-medium leading-relaxed text-sm pt-2">
+                          {formatRec(rec)}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No recommendations available</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-
-        {/* Recommendations Card */}
-        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-8 rounded-3xl shadow-xl border border-indigo-100">
-          <h4 className="text-xl font-bold text-indigo-900 mb-6 flex items-center">
-            <span className="mr-2 text-2xl">✨</span> Personalized Routine
-          </h4>
-          <ul className="space-y-4">
-            {recommendations && recommendations.length > 0 ? (
-              recommendations.map((rec, i) => {
-                // Smart Icon Logic
-                let icon = "✨";
-                if (rec.toLowerCase().includes("cleanser") || rec.toLowerCase().includes("wash")) icon = "🧴";
-                else if (rec.toLowerCase().includes("sunscreen") || rec.toLowerCase().includes("spf")) icon = "☀️";
-                else if (rec.toLowerCase().includes("moisturizer") || rec.toLowerCase().includes("hydrate")) icon = "💧";
-                else if (rec.toLowerCase().includes("exfoliate") || rec.toLowerCase().includes("scrub")) icon = "🧼";
-                else if (rec.toLowerCase().includes("serum")) icon = "🧪";
-                else if (rec.toLowerCase().includes("mask")) icon = "🧖‍♀️";
-                else if (rec.toLowerCase().includes("shav")) icon = "🪒";
-                else if (rec.toLowerCase().includes("beard")) icon = "🧔";
-
-                // Bold Keywords Logic
-                const formatRec = (text) => {
-                  const parts = text.split(/(\*\*.*?\*\*)/g);
-                  return parts.map((part, index) =>
-                    part.startsWith('**') && part.endsWith('**')
-                      ? <strong key={index} className="text-indigo-900">{part.slice(2, -2)}</strong>
-                      : part
-                  );
-                };
-
-                return (
-                  <li
-                    key={i}
-                    className="flex items-start bg-white/60 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-indigo-50 hover:bg-white hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
-                    style={{ animationDelay: `${i * 150}ms` }}
-                  >
-                    <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 text-lg mr-4 shadow-sm border border-white">
-                      {icon}
-                    </span>
-                    <span className="text-gray-700 font-medium leading-relaxed mt-1">
-                      {formatRec(rec)}
-                    </span>
-                  </li>
-                );
-              })
-            ) : (
-              <p className="text-gray-500 text-center py-4">No recommendations available</p>
-            )}
-          </ul>
-        </div>
-
       </div>
     </div>
   );
