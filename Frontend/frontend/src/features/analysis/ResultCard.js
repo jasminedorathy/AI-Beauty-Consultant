@@ -176,43 +176,47 @@ const ResultCard = ({ data, image, annotatedImage }) => {
             <span className="mr-2 text-2xl">✨</span> Personalized Routine
           </h4>
           <ul className="space-y-4">
-            {recommendations.map((rec, i) => {
-              // Smart Icon Logic
-              let icon = "✨";
-              if (rec.toLowerCase().includes("cleanser") || rec.toLowerCase().includes("wash")) icon = "🧴";
-              else if (rec.toLowerCase().includes("sunscreen") || rec.toLowerCase().includes("spf")) icon = "☀️";
-              else if (rec.toLowerCase().includes("moisturizer") || rec.toLowerCase().includes("hydrate")) icon = "💧";
-              else if (rec.toLowerCase().includes("exfoliate") || rec.toLowerCase().includes("scrub")) icon = "🧼";
-              else if (rec.toLowerCase().includes("serum")) icon = "🧪";
-              else if (rec.toLowerCase().includes("mask")) icon = "🧖‍♀️";
-              else if (rec.toLowerCase().includes("shav")) icon = "🪒";
-              else if (rec.toLowerCase().includes("beard")) icon = "🧔";
+            {recommendations && recommendations.length > 0 ? (
+              recommendations.map((rec, i) => {
+                // Smart Icon Logic
+                let icon = "✨";
+                if (rec.toLowerCase().includes("cleanser") || rec.toLowerCase().includes("wash")) icon = "🧴";
+                else if (rec.toLowerCase().includes("sunscreen") || rec.toLowerCase().includes("spf")) icon = "☀️";
+                else if (rec.toLowerCase().includes("moisturizer") || rec.toLowerCase().includes("hydrate")) icon = "💧";
+                else if (rec.toLowerCase().includes("exfoliate") || rec.toLowerCase().includes("scrub")) icon = "🧼";
+                else if (rec.toLowerCase().includes("serum")) icon = "🧪";
+                else if (rec.toLowerCase().includes("mask")) icon = "🧖‍♀️";
+                else if (rec.toLowerCase().includes("shav")) icon = "🪒";
+                else if (rec.toLowerCase().includes("beard")) icon = "🧔";
 
-              // Bold Keywords Logic
-              const formatRec = (text) => {
-                const parts = text.split(/(\*\*.*?\*\*)/g);
-                return parts.map((part, index) =>
-                  part.startsWith('**') && part.endsWith('**')
-                    ? <strong key={index} className="text-indigo-900">{part.slice(2, -2)}</strong>
-                    : part
+                // Bold Keywords Logic
+                const formatRec = (text) => {
+                  const parts = text.split(/(\*\*.*?\*\*)/g);
+                  return parts.map((part, index) =>
+                    part.startsWith('**') && part.endsWith('**')
+                      ? <strong key={index} className="text-indigo-900">{part.slice(2, -2)}</strong>
+                      : part
+                  );
+                };
+
+                return (
+                  <li
+                    key={i}
+                    className="flex items-start bg-white/60 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-indigo-50 hover:bg-white hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
+                    style={{ animationDelay: `${i * 150}ms` }}
+                  >
+                    <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 text-lg mr-4 shadow-sm border border-white">
+                      {icon}
+                    </span>
+                    <span className="text-gray-700 font-medium leading-relaxed mt-1">
+                      {formatRec(rec)}
+                    </span>
+                  </li>
                 );
-              };
-
-              return (
-                <li
-                  key={i}
-                  className="flex items-start bg-white/60 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-indigo-50 hover:bg-white hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
-                  style={{ animationDelay: `${i * 150}ms` }}
-                >
-                  <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 text-lg mr-4 shadow-sm border border-white">
-                    {icon}
-                  </span>
-                  <span className="text-gray-700 font-medium leading-relaxed mt-1">
-                    {formatRec(rec)}
-                  </span>
-                </li>
-              );
-            })}
+              })
+            ) : (
+              <p className="text-gray-500 text-center py-4">No recommendations available</p>
+            )}
           </ul>
         </div>
 
