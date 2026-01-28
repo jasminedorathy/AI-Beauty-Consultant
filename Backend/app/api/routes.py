@@ -208,105 +208,41 @@ def load_api_key():
         return None
     return None
 
+
 @router.post("/chat")
 async def chat_consultant(req: ChatRequest, current_user: dict = Depends(get_current_user)):
     """
-    Real LLM Agent using OpenRouter (Llama 3.1 / Gemini):
-    1. Retrieves User Context (Skin Scan)
-    2. Injects Service Menu (RAG)
-    3. Generates Personalized Response via API
+    Beauty Consultant Chatbot using local rule-based AI.
+    Provides intelligent responses based on user context without external API dependencies.
     """
     msg = req.message
     email = current_user.get("sub")
     
-    # 1. RETRIEVE CONTEXT
+    # 1. RETRIEVE USER CONTEXT
     last_scan = analysis_collection.find_one({"user_email": email}, sort=[("created_at", -1)])
     
-    # Prepare Context Strings
-    skin_context = "User has no recent scan."
-    gender = "Female"
+    # Prepare context for chatbot
+    user_context = None
     if last_scan:
-        gender = last_scan.get("gender", "Female")
-        scores = last_scan.get('skin_scores', {})
-        shape = last_scan.get('face_shape', 'Unknown')
-        skin_context = f"User stats: Gender={gender}, FaceShape={shape}, Acne={scores.get('acne',0)*100:.0f}%, Oiliness={scores.get('oiliness',0)*100:.0f}%, Texture={scores.get('texture',0)*100:.0f}%."
+        user_context = {
+            "gender": last_scan.get("gender", "Female"),
+            "face_shape": last_scan.get("face_shape", "Unknown"),
+            "skin_scores": last_scan.get("skin_scores", {}),
+            "skin_tone": last_scan.get("skin_tone"),
+            "undertone": last_scan.get("undertone"),
+            "eye_color": last_scan.get("eye_color"),
+            "hair_color": last_scan.get("hair_color"),
+            "season": last_scan.get("season")
+        }
     
-    from app.ml.services_db import PARLOR_SERVICES
-    services_context = json.dumps(PARLOR_SERVICES.get(gender, PARLOR_SERVICES["Female"]))
-
-    # 2. CALL OPENROUTER (With Fallback Strategy)
-    api_key = load_api_key()
-    if not api_key:
-        return {"reply": "Error: AI API Key not configured. Please contact admin."}
-
-    system_prompt = f"""
-    You are an elite AI Beauty Consultant for a premium salon.
+    # 2. GENERATE RESPONSE USING LOCAL CHATBOT
+    from app.ml.chatbot import get_bot_response
     
-    **YOUR KNOWLEDGE BASE (Service Menu):**
-    {services_context}
-    
-    **CURRENT CLIENT CONTEXT:**
-    {skin_context}
-    
-    **INSTRUCTIONS:**
-    1. Be helpful, professional, and empathetic.
-    2. Recommending services? ONLY use the exact names and prices from the KNOWLEDGE BASE.
-    3. If the user has skin issues (Acne/Dryness) based on CLIENT CONTEXT, suggest specific treatments.
-    4. Keep responses concise (max 2-3 sentences).
-    5. If they ask to book, say "I've flagged this for our receptionist."
-    """
-    
-    # Priority List of Free Models to Try (More reliable options added)
-    models_to_try = [
-        "meta-llama/llama-3-8b-instruct:free",
-        "microsoft/phi-3-mini-128k-instruct:free",
-        "mistralai/mistral-7b-instruct:free",
-        "huihui-ai/qwen-2.5-7b-instruct:free",
-        "openchat/openchat-7b:free"
-    ]
+    try:
+        reply = get_bot_response(msg, user_context)
+        print(f"💬 Chatbot Response: {reply[:100]}...")
+        return {"reply": reply}
+    except Exception as e:
+        print(f"⚠️ Chatbot Error: {e}")
+        return {"reply": "I'm here to help! Ask me about skincare, makeup, hairstyles, or our salon services. ✨"}
 
-    last_error = ""
-    import time
-
-    for model in models_to_try:
-        try:
-            print(f"🤖 Trying AI Model: {model}...")
-            response = requests.post(
-                url="https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": "http://localhost:3000", 
-                },
-                data=json.dumps({
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": msg}
-                    ]
-                }),
-                timeout=30 # Increased timeout for free models
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                if 'choices' in data and len(data['choices']) > 0:
-                    ai_reply = data['choices'][0]['message']['content']
-                    return {"reply": ai_reply}
-            
-            # If not 200
-            error_msg = response.text
-            last_error = f"Model {model} failed ({response.status_code}): {error_msg}"
-            print(f"⚠️ {last_error}")
-            
-            # If rate limited, sleep briefly before trying NEXT model (don't retry same model to avoid queue)
-            if response.status_code == 429:
-                time.sleep(1) 
-                
-        except Exception as e:
-            last_error = f"Model {model} exception: {str(e)}"
-            print(f"⚠️ {last_error}")
-            continue
-
-    # If all failed
-    return {"reply": f"I apologize, but my AI brain is a bit overwhelmed right now (All providers busy). Please try asking again in 10 seconds! (Debug: {last_error})"}
