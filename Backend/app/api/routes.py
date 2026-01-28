@@ -300,11 +300,13 @@ async def chat_consultant(req: ChatRequest, current_user: dict = Depends(get_cur
 7. If they ask to book, say "I can help you schedule! Please call us at (555) 123-4567"
 """
         
-        # Try multiple models for reliability
+        # Try multiple reliable free models
         models_to_try = [
-            "google/gemini-2.0-flash-exp:free",
-            "meta-llama/llama-3.1-8b-instruct:free",
-            "microsoft/phi-3-mini-128k-instruct:free",
+            "nousresearch/hermes-3-llama-3.1-405b:free",  # Very capable, usually available
+            "meta-llama/llama-3.2-3b-instruct:free",      # Smaller, faster, reliable
+            "google/gemma-2-9b-it:free",                   # Google's Gemma, good quality
+            "qwen/qwen-2-7b-instruct:free",                # Alibaba's model, reliable
+            "mistralai/mistral-7b-instruct:free",          # Classic reliable model
         ]
         
         import time
