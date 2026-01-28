@@ -56,7 +56,38 @@ class BeautyConsultantBot:
                 return f"For your {skin_tone} skin tone, I recommend SPF 50+ broad-spectrum sunscreen daily. Apply 15 minutes before sun exposure and reapply every 2 hours. Look for mineral sunscreens with zinc oxide or titanium dioxide for sensitive skin. ☀️"
             return "SPF is crucial! Use SPF 50+ broad-spectrum sunscreen daily, even on cloudy days. Apply 15 minutes before going outside and reapply every 2 hours. This prevents premature aging and dark spots. ☀️"
         
-        # 4. Acne / Breakouts
+        # 4. Food / Nutrition / Diet
+        if any(word in msg_lower for word in ["food", "diet", "nutrition", "eat", "vitamin", "supplement"]):
+            response = "**Foods for Healthy Skin** 🥗\n\n"
+            
+            # Customize based on skin issues
+            if skin_scores:
+                acne = skin_scores.get("acne", 0) * 100
+                oiliness = skin_scores.get("oiliness", 0) * 100
+                
+                if acne > 30 or oiliness > 60:
+                    response += "**For Acne-Prone/Oily Skin:**\n"
+                    response += "• **Eat**: Omega-3 (salmon, walnuts), zinc (pumpkin seeds), green tea, berries\n"
+                    response += "• **Avoid**: Sugar, dairy, fried foods, processed carbs\n"
+                    response += "• **Drink**: 8+ glasses of water daily\n\n"
+                else:
+                    response += "**For Healthy Skin:**\n"
+                    response += "• **Vitamin C**: Oranges, strawberries, bell peppers (collagen production)\n"
+                    response += "• **Vitamin E**: Almonds, avocado, spinach (antioxidant)\n"
+                    response += "• **Omega-3**: Fatty fish, chia seeds, flaxseed (anti-inflammatory)\n"
+                    response += "• **Zinc**: Oysters, beef, lentils (healing)\n"
+                    response += "• **Water**: 8-10 glasses daily (hydration)\n\n"
+            
+            response += "**General Tips:**\n"
+            response += "• Limit sugar and processed foods\n"
+            response += "• Eat colorful fruits and vegetables\n"
+            response += "• Include healthy fats (avocado, nuts, olive oil)\n"
+            response += "• Consider probiotics (yogurt, kimchi) for gut health\n"
+            response += "• Green tea for antioxidants ☕"
+            
+            return response
+        
+        # 5. Acne / Breakouts
         if any(word in msg_lower for word in ["acne", "pimple", "breakout", "blemish", "spot"]):
             if acne > 30:
                 return f"Based on your analysis, you have moderate acne concerns. I recommend:\n• Cleanser with Salicylic Acid (2%)\n• Niacinamide serum in the morning\n• Benzoyl Peroxide spot treatment at night\n• Oil-free moisturizer\n• Avoid touching your face! 🧴"
