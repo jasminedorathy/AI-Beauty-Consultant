@@ -117,13 +117,36 @@ const LiveAnalyzePage = () => {
 
     try {
       const res = await analyzeImage(formData);
+      console.log("Live analysis response:", res);
 
-      if (res.error) {
+      // Handle new API response structure: {success: true, data: {...}}
+      let analysisData = res;
+
+      if (res.success && res.data) {
+        // New format - extract from data wrapper
+        analysisData = {
+          faceShape: res.data.face_shape,
+          face_shape: res.data.face_shape,
+          faceShapeConfidence: res.data.confidence,
+          gender: res.data.gender,
+          skinScores: res.data.skin_analysis || {},
+          skin_scores: res.data.skin_analysis || {},
+          skin_analysis: res.data.skin_analysis || {},
+          colorAnalysis: res.data.color_analysis || {},
+          recommendations: res.data.recommendations || [],
+          imageUrl: res.data.image_url,
+          annotated_image_url: res.data.annotated_image_url,
+          annotatedImageUrl: res.data.annotated_image_url
+        };
+      } else if (res.error) {
+        // Error response
         setError(res.error);
         setResult(null);
-      } else {
-        setResult(res);
+        setLoading(false);
+        return;
       }
+
+      setResult(analysisData);
     } catch (e) {
       console.error(e);
       const serverError = e.response?.data?.error || e.response?.data?.detail || "Analysis failed. Please try again.";
