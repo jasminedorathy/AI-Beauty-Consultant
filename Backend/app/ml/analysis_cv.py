@@ -182,7 +182,8 @@ except Exception as e:
 def classify_gender_geometric(landmarks, width, height, image=None):
     """
     Estimates gender using Standard CNN (gender_net.caffemodel).
-    Fallback to simple linear model if CNN fails.
+    Improved with better preprocessing and confidence thresholds.
+    Fallback to hair/facial feature analysis if CNN fails.
     """
     # 1. Try CNN First
     if gender_net is not None and image is not None:
@@ -198,8 +199,9 @@ def classify_gender_geometric(landmarks, width, height, image=None):
             y2 = int(max(ys) * height)
             
             # Add padding (very important for deep learning models)
-            pad_x = int((x2 - x1) * 0.4) # 40% padding
-            pad_y = int((y2 - y1) * 0.4)
+            # Increased padding for better context
+            pad_x = int((x2 - x1) * 0.5) # 50% padding (was 40%)
+            pad_y = int((y2 - y1) * 0.5)
             
             img_h, img_w = image.shape[:2]
             x1 = max(0, x1 - pad_x)
@@ -210,29 +212,148 @@ def classify_gender_geometric(landmarks, width, height, image=None):
             face_crop = image[y1:y2, x1:x2]
             
             if face_crop.size > 0:
-                # Preprocess for Caffe Model
-                # Mean values: (78.4263377603, 87.7689143744, 114.895847746)
-                blob = cv2.dnn.blobFromImage(face_crop, 1.0, (227, 227), (78.42, 87.76, 114.89), swapRB=False)
+                # Enhanced preprocessing for better accuracy
+                # 1. Resize to exact model input size
+                face_resized = cv2.resize(face_crop, (227, 227))
+                
+                # 2. Apply histogram equalization for better contrast
+                if len(face_resized.shape) == 3:
+                    # Convert to YCrCb and equalize Y channel
+                    ycrcb = cv2.cvtColor(face_resized, cv2.COLOR_BGR2YCrCb)
+                    ycrcb[:,:,0] = cv2.equalizeHist(ycrcb[:,:,0])
+                    face_resized = cv2.cvtColor(ycrcb, cv2.COLOR_YCrCb2BGR)
+                
+                # 3. Create blob with proper mean values
+                # Mean values for gender_net: (78.4263377603, 87.7689143744, 114.895847746)
+                blob = cv2.dnn.blobFromImage(
+                    face_resized, 
+                    1.0, 
+                    (227, 227), 
+                    (78.4263377603, 87.7689143744, 114.895847746), 
+                    swapRB=False
+                )
                 
                 gender_net.setInput(blob)
                 preds = gender_net.forward()
                 
-                # Output: [Male_Prob, Female_Prob] typically
-                # Wait, common gender_net output: [Male, Female]
-                male_prob = preds[0][0]
-                female_prob = preds[0][1]
+                # IMPORTANT: gender_net outputs [Male_Prob, Female_Prob]
+                # Index 0 = Male, Index 1 = Female
+                male_prob = float(preds[0][0])
+                female_prob = float(preds[0][1])
                 
-                pred_label = "Male" if male_prob > female_prob else "Female"
-                conf = max(male_prob, female_prob)
+                # Add confidence threshold to reduce misclassifications
+                # If confidence is low, use fallback method
+                confidence_diff = abs(male_prob - female_prob)
                 
-                print(f"🧬 GENDER CNN: {pred_label} ({conf*100:.1f}%)")
+                if confidence_diff < 0.15:  # Low confidence (less than 15% difference)
+                    print(f"⚠️ Low confidence ({confidence_diff*100:.1f}%), using fallback...")
+                    # Use hair length as additional signal
+                    return _gender_fallback_analysis(landmarks, width, height, image)
+                
+                # Determine gender based on higher probability
+                if female_prob > male_prob:
+                    pred_label = "Female"
+                    conf = female_prob
+                else:
+                    pred_label = "Male"
+                    conf = male_prob
+                
+                print(f"🧬 GENDER CNN: {pred_label} ({conf*100:.1f}%) [M:{male_prob*100:.1f}% F:{female_prob*100:.1f}%]")
                 return pred_label
 
         except Exception as e:
             print(f"⚠️ Gender CNN Inference Failed: {e}")
 
-    # 2. Fallback to Geometric (Legacy)
-    # ... (Keep existing or simplified fallback)
+    # 2. Fallback to Geometric/Hair Analysis
+    return _gender_fallback_analysis(landmarks, width, height, image)
+
+
+def _gender_fallback_analysis(landmarks, width, height, image=None):
+    """
+    Fallback gender detection using facial geometry and hair analysis.
+    More reliable for edge cases.
+    """
+    try:
+        # Method 1: Jaw width to face height ratio
+        # Males typically have wider jaws relative to face height
+        
+        # Get key landmark points
+        chin = landmarks[152]  # Chin point
+        left_cheek = landmarks[234]  # Left cheek
+        right_cheek = landmarks[454]  # Right cheek
+        forehead = landmarks[10]  # Forehead
+        
+        # Calculate jaw width
+        jaw_width = abs(right_cheek.x - left_cheek.x) * width
+        
+        # Calculate face height
+        face_height = abs(chin.y - forehead.y) * height
+        
+        # Jaw to height ratio
+        jaw_ratio = jaw_width / face_height if face_height > 0 else 0
+        
+        # Method 2: Eyebrow to eye distance
+        # Females typically have higher eyebrows relative to eyes
+        left_eyebrow = landmarks[70]  # Left eyebrow
+        left_eye = landmarks[159]  # Left eye
+        
+        eyebrow_distance = abs(left_eyebrow.y - left_eye.y) * height
+        
+        # Method 3: Hair length detection (if image available)
+        hair_score = 0
+        if image is not None:
+            # Check for long hair by analyzing pixels above forehead
+            img_h, img_w = image.shape[:2]
+            forehead_y = int(forehead.y * height)
+            
+            # Sample region above head
+            if forehead_y > 50:
+                hair_region = image[max(0, forehead_y - 50):forehead_y, :]
+                
+                # Long hair typically has more variation in color
+                if hair_region.size > 0:
+                    hair_std = np.std(hair_region)
+                    hair_score = 1 if hair_std > 30 else 0  # Higher variation = likely long hair
+        
+        # Scoring system
+        male_score = 0
+        female_score = 0
+        
+        # Jaw ratio scoring (males typically > 0.75, females < 0.70)
+        if jaw_ratio > 0.75:
+            male_score += 2
+        elif jaw_ratio < 0.70:
+            female_score += 2
+        else:
+            # Neutral zone
+            pass
+        
+        # Eyebrow distance scoring (females typically have more distance)
+        if eyebrow_distance > 15:
+            female_score += 1
+        elif eyebrow_distance < 10:
+            male_score += 1
+        
+        # Hair length scoring
+        female_score += hair_score
+        
+        # Final decision
+        if female_score > male_score:
+            result = "Female"
+        elif male_score > female_score:
+            result = "Male"
+        else:
+            # Default to Female if tie (conservative approach for beauty app)
+            result = "Female"
+        
+        print(f"🔍 FALLBACK GENDER: {result} (Jaw:{jaw_ratio:.2f}, Brow:{eyebrow_distance:.1f}px, Hair:{hair_score})")
+        return result
+        
+    except Exception as e:
+        print(f"⚠️ Fallback gender analysis failed: {e}")
+        # Ultimate fallback - default to Female for beauty consultation
+        return "Female"
+
     return "Female" # Default fallback safety
 
 # --- 3. SKIN ANALYSIS (HYBRID: CNN + K-MEANS) ---
