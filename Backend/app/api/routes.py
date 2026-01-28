@@ -212,8 +212,10 @@ def load_api_key():
 @router.post("/chat")
 async def chat_consultant(req: ChatRequest, current_user: dict = Depends(get_current_user)):
     """
-    Beauty Consultant Chatbot using local rule-based AI.
-    Provides intelligent responses based on user context without external API dependencies.
+    Hybrid Beauty Consultant Chatbot:
+    1. Tries OpenRouter API for comprehensive responses
+    2. Falls back to local rule-based AI if API fails
+    Provides intelligent responses based on user context.
     """
     msg = req.message
     email = current_user.get("sub")
@@ -223,24 +225,112 @@ async def chat_consultant(req: ChatRequest, current_user: dict = Depends(get_cur
     
     # Prepare context for chatbot
     user_context = None
+    skin_context = "User has no recent scan."
+    gender = "Female"
+    
     if last_scan:
+        gender = last_scan.get("gender", "Female")
+        scores = last_scan.get('skin_scores', {})
+        shape = last_scan.get('face_shape', 'Unknown')
+        skin_tone = last_scan.get('skin_tone', 'Unknown')
+        eye_color = last_scan.get('eye_color', 'Unknown')
+        hair_color = last_scan.get('hair_color', 'Unknown')
+        
+        skin_context = f"""User Profile:
+- Gender: {gender}
+- Face Shape: {shape}
+- Skin Tone: {skin_tone}
+- Eye Color: {eye_color}
+- Hair Color: {hair_color}
+- Acne: {scores.get('acne',0)*100:.0f}%
+- Oiliness: {scores.get('oiliness',0)*100:.0f}%
+- Texture: {scores.get('texture',0)*100:.0f}%"""
+        
         user_context = {
-            "gender": last_scan.get("gender", "Female"),
-            "face_shape": last_scan.get("face_shape", "Unknown"),
-            "skin_scores": last_scan.get("skin_scores", {}),
-            "skin_tone": last_scan.get("skin_tone"),
+            "gender": gender,
+            "face_shape": shape,
+            "skin_scores": scores,
+            "skin_tone": skin_tone,
             "undertone": last_scan.get("undertone"),
-            "eye_color": last_scan.get("eye_color"),
-            "hair_color": last_scan.get("hair_color"),
+            "eye_color": eye_color,
+            "hair_color": hair_color,
             "season": last_scan.get("season")
         }
     
-    # 2. GENERATE RESPONSE USING LOCAL CHATBOT
+    # 2. TRY OPENROUTER API FIRST (for comprehensive responses)
+    api_key = load_api_key()
+    
+    if api_key:
+        from app.ml.services_db import PARLOR_SERVICES
+        services_context = json.dumps(PARLOR_SERVICES.get(gender, PARLOR_SERVICES["Female"]))
+        
+        system_prompt = f"""You are an elite AI Beauty Consultant for a premium salon.
+
+**CLIENT PROFILE:**
+{skin_context}
+
+**AVAILABLE SERVICES:**
+{services_context}
+
+**INSTRUCTIONS:**
+1. Be professional, empathetic, and helpful
+2. Provide detailed, personalized advice based on the client's profile
+3. When recommending services, use exact names and prices from AVAILABLE SERVICES
+4. For skincare questions, give specific product recommendations and routines
+5. For makeup questions, suggest colors based on their skin tone and coloring
+6. Keep responses conversational but informative (2-4 sentences)
+7. If they ask to book, say "I can help you schedule! Please call us at (555) 123-4567"
+"""
+        
+        # Try multiple models for reliability
+        models_to_try = [
+            "google/gemini-2.0-flash-exp:free",
+            "meta-llama/llama-3.1-8b-instruct:free",
+            "microsoft/phi-3-mini-128k-instruct:free",
+        ]
+        
+        import time
+        for model in models_to_try:
+            try:
+                print(f"🤖 Trying OpenRouter Model: {model}...")
+                response = requests.post(
+                    url="https://openrouter.ai/api/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": "http://localhost:3000",
+                    },
+                    data=json.dumps({
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": msg}
+                        ]
+                    }),
+                    timeout=15
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if 'choices' in data and len(data['choices']) > 0:
+                        ai_reply = data['choices'][0]['message']['content']
+                        print(f"✅ OpenRouter Success: {ai_reply[:100]}...")
+                        return {"reply": ai_reply}
+                
+                print(f"⚠️ Model {model} failed: {response.status_code}")
+                
+            except Exception as e:
+                print(f"⚠️ Model {model} error: {str(e)}")
+                continue
+        
+        print("⚠️ All OpenRouter models failed, using local fallback...")
+    
+    # 3. FALLBACK TO LOCAL CHATBOT (always reliable)
     from app.ml.chatbot import get_bot_response
     
     try:
         reply = get_bot_response(msg, user_context)
-        print(f"💬 Chatbot Response: {reply[:100]}...")
+        print(f"💬 Local Chatbot Response: {reply[:100]}...")
         return {"reply": reply}
     except Exception as e:
         print(f"⚠️ Chatbot Error: {e}")

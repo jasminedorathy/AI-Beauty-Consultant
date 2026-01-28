@@ -142,27 +142,31 @@ const ResultCard = ({ data, image, annotatedImage }) => {
 
           <h4 className="text-xl font-bold text-gray-800 mb-6">Skin Health Analysis</h4>
           <div className="space-y-6 relative z-10">
-            {Object.entries(skinScores).map(([key, value], idx) => (
-              <div key={key} className="group">
-                <div className="flex justify-between mb-2 items-end">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                    {key === "acne" ? "🔴" : key === "oiliness" ? "✨" : key === "texture" ? "🧱" : "🔹"}
-                    {key}
-                  </span>
-                  <span className={`text-2xl font-black ${getScoreColor(value)} drop-shadow-sm`}>
-                    {Math.round(value * 100)}<span className="text-sm text-gray-400 ml-0.5">%</span>
-                  </span>
-                </div>
-                <div className="w-full bg-gray-100/50 rounded-full h-4 p-1 shadow-inner border border-gray-100">
-                  <div
-                    className={`h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden group-hover:shadow-lg ${getProgressColor(value)}`}
-                    style={{ width: `${value * 100}%` }}
-                  >
-                    <div className="absolute inset-0 bg-white/30 animate-pulse-slow"></div>
+            {skinScores && Object.keys(skinScores).length > 0 ? (
+              Object.entries(skinScores).map(([key, value], idx) => (
+                <div key={key} className="group">
+                  <div className="flex justify-between mb-2 items-end">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                      {key === "acne" ? "🔴" : key === "oiliness" ? "✨" : key === "texture" ? "🧱" : "🔹"}
+                      {key}
+                    </span>
+                    <span className={`text-2xl font-black ${getScoreColor(value)} drop-shadow-sm`}>
+                      {Math.round(value * 100)}<span className="text-sm text-gray-400 ml-0.5">%</span>
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-100/50 rounded-full h-4 p-1 shadow-inner border border-gray-100">
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden group-hover:shadow-lg ${getProgressColor(value)}`}
+                      style={{ width: `${value * 100}%` }}
+                    >
+                      <div className="absolute inset-0 bg-white/30 animate-pulse-slow"></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-4">No skin analysis data available</p>
+            )}
           </div>
         </div>
 

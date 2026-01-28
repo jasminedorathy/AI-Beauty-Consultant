@@ -31,8 +31,25 @@ const AnalyzePage = () => {
       const res = await analyzeImage(formData);
       console.log("Analysis Result:", res);
 
+      // Handle new API response structure: {success: true, data: {...}}
+      let analysisData = res;
+
+      // If response has a 'data' wrapper, extract it
+      if (res.success && res.data) {
+        analysisData = {
+          faceShape: res.data.face_shape,
+          faceShapeConfidence: res.data.confidence,
+          gender: res.data.gender,
+          skinScores: res.data.skin_analysis || {},
+          colorAnalysis: res.data.color_analysis || {},
+          recommendations: res.data.recommendations || [],
+          imageUrl: res.data.image_url,
+          annotatedImageUrl: res.data.annotated_image_url
+        };
+      }
+
       // Always display result, even if it contains an error (ResultCard handles it)
-      setResult(res);
+      setResult(analysisData);
 
     } catch (e) {
       console.error(e);
