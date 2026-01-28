@@ -54,7 +54,6 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
         x, y, w, h = bbox
         
         # 1. Face Shape & Gender Analysis
-        # Ensure we have the new import
         from app.ml.analysis_cv import classify_gender_geometric
         
         # Unpack tuple (Shape, Confidence)
@@ -65,8 +64,26 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
         face_img = img[y:y+h, x:x+w]
         skin_scores = analyze_skin_cv(face_img, landmarks) 
 
-        # 5. Generate Consultant Recommendations (Pass Gender + Image for Foundation Matching)
-        recommendations = generate_consultation(shape_name, skin_scores, gender, img, landmarks)
+        # 3. COLOR ANALYSIS (NEW) - Skin Tone, Eye Color, Hair Color
+        from app.ml.color_analysis import (
+            detect_skin_tone, 
+            detect_eye_color, 
+            detect_hair_color,
+            get_seasonal_color_palette
+        )
+        
+        skin_tone, undertone, skin_hex = detect_skin_tone(img, landmarks)
+        eye_color, eye_hex = detect_eye_color(img, landmarks)
+        hair_color, hair_hex = detect_hair_color(img, landmarks)
+        season, palette = get_seasonal_color_palette(skin_tone, undertone, eye_color, hair_color)
+
+        # 4. Generate Consultant Recommendations (Pass all color data)
+        recommendations = generate_consultation(
+            shape_name, skin_scores, gender, img, landmarks,
+            skin_tone=skin_tone, undertone=undertone,
+            eye_color=eye_color, hair_color=hair_color,
+            season=season
+        )
 
         # --- GENERATE ANNOTATED IMAGE ---
         annotated_img = generate_annotated_image(img, landmarks, gender)
@@ -100,6 +117,12 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
                 "face_shape_conf": shape_conf,
                 "gender": gender,
                 "skin_scores": skin_scores,
+                # Color Analysis Data
+                "skin_tone": skin_tone,
+                "undertone": undertone,
+                "eye_color": eye_color,
+                "hair_color": hair_color,
+                "season": season,
                 "recommendations": recommendations,
                 "created_at": datetime.utcnow()
             }
@@ -107,21 +130,36 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
             print(f"✅ Saved analysis for user {current_user.get('sub')}")
 
         except Exception as db_err:
-            print(f"⚠️ Failed to save to DB: {db_err}")
+            print(f"⚠️ DB Save Failed: {db_err}")
+            image_url = None
             annotated_image_url = None
-            if 'image_url' not in locals():
-                 image_url = None
 
+        # --- RETURN RESPONSE ---
         return {
-            "faceShape": shape_name,
-            "faceShapeConfidence": float(shape_conf),
-            "gender": gender,
-            "skinScores": skin_scores,
-            "recommendations": recommendations,
-            "boundingBox": {"x": x, "y": y, "w": w, "h": h},
-            "imageUrl": image_url if 'image_url' in locals() else None,
-            "annotated_image_url": annotated_image_url if 'annotated_image_url' in locals() else None,
-            "annotatedImageUrl": annotated_image_url if 'annotated_image_url' in locals() else None
+            "success": True,
+            "data": {
+                "face_shape": shape_name,
+                "confidence": float(shape_conf),
+                "gender": gender,
+                "skin_analysis": {
+                    "acne": float(skin_scores.get('acne', 0)),
+                    "oiliness": float(skin_scores.get('oiliness', 0)),
+                    "texture": float(skin_scores.get('texture', 0))
+                },
+                "color_analysis": {
+                    "skin_tone": skin_tone,
+                    "undertone": undertone,
+                    "skin_hex": skin_hex,
+                    "eye_color": eye_color,
+                    "eye_hex": eye_hex,
+                    "hair_color": hair_color,
+                    "hair_hex": hair_hex,
+                    "season": season
+                },
+                "recommendations": recommendations,
+                "image_url": image_url,
+                "annotated_image_url": annotated_image_url
+            }
         }
     except Exception as e:
         import traceback

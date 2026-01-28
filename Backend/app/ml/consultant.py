@@ -1,7 +1,9 @@
-def generate_consultation(face_shape, skin_scores, gender="Female", image=None, landmarks=None):
+def generate_consultation(face_shape, skin_scores, gender="Female", image=None, landmarks=None,
+                         skin_tone=None, undertone=None, eye_color=None, hair_color=None, season=None):
     """
     Acts as a Beauty Consultant to generate personalized advice.
-    Adapts based on Gender.
+    Now includes comprehensive color analysis.
+    Adapts based on Gender, Skin Tone, Eye Color, Hair Color, and Seasonal Palette.
     """
     acne = skin_scores.get('acne', 0)
     oiliness = skin_scores.get('oiliness', 0)
@@ -90,11 +92,32 @@ def generate_consultation(face_shape, skin_scores, gender="Female", image=None, 
     for svc in services:
         salon_recs.append(f"- **{svc['name']}** ({svc['price']}): {svc['desc']}")
 
-    # 4. Final Compilation
-    # Add Salon Recs before the Grooming Tip
-    final_recs = [f"**Diagnosis ({gender})**: {skin_type} Skin"] + routine + salon_recs
+    # 4. COLOR ANALYSIS SECTION (NEW)
+    color_analysis = []
+    if skin_tone and eye_color and hair_color:
+        color_analysis.append("\n🎨 **Color Analysis**:")
+        color_analysis.append(f"- **Skin Tone**: {skin_tone} ({undertone} undertone)")
+        color_analysis.append(f"- **Eye Color**: {eye_color}")
+        color_analysis.append(f"- **Hair Color**: {hair_color}")
+        
+        if season:
+            color_analysis.append(f"\n✨ **Your Season**: {season}")
+            color_analysis.append(f"- Best colors for you: {palette if 'palette' in locals() else 'Warm, vibrant tones'}")
+            
+            # Makeup recommendations based on coloring
+            if season == "Spring":
+                color_analysis.append("- **Makeup**: Peachy blush, coral lips, golden eyeshadow")
+            elif season == "Summer":
+                color_analysis.append("- **Makeup**: Rose blush, berry lips, cool-toned eyeshadow")
+            elif season == "Autumn":
+                color_analysis.append("- **Makeup**: Terracotta blush, brick red lips, warm bronze eyeshadow")
+            else:  # Winter
+                color_analysis.append("- **Makeup**: Pink blush, bold red lips, jewel-toned eyeshadow")
+
+    # 5. Final Compilation
+    final_recs = [f"**Diagnosis ({gender})**: {skin_type} Skin"] + color_analysis + routine + salon_recs
     
-    # 5. Styling / Grooming Tip + HAIRSTYLE RECS
+    # 6. Styling / Grooming Tip + HAIRSTYLE RECS
     if face_shape:
         # Hairstyle Database
         from app.ml.services_db import HAIRSTYLES
