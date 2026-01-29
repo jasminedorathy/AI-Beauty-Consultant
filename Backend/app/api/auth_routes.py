@@ -97,4 +97,9 @@ def login(user: UserAuth):
         "role": db_user["role"]
     })
 
-    return {"access_token": token}
+    return {
+        "access_token": token,
+        "token_type": "bearer"
+    }
+
+

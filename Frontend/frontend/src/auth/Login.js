@@ -22,7 +22,7 @@ const Login = () => {
 
     try {
       const res = await apiLogin({ email, password });
-      // API returns { access_token, token_type } in data property
+      // Backend returns { access_token, token_type }
       login(res.data.access_token);
       navigate("/dashboard");
     } catch (err) {
