@@ -24,6 +24,8 @@ const Login = () => {
       const res = await apiLogin({ email, password });
       // Backend returns { access_token, token_type }
       login(res.data.access_token);
+      // Store email for navbar display
+      localStorage.setItem('email', email);
       navigate("/dashboard");
     } catch (err) {
       console.error(err);

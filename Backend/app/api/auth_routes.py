@@ -68,19 +68,33 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/signup")
 def signup(user: UserAuth):
-    if user_collection.find_one({"email": user.email}):
-        raise HTTPException(status_code=400, detail="User already exists")
+    try:
+        if user_collection.find_one({"email": user.email}):
+            raise HTTPException(status_code=400, detail="User already exists")
 
-    raw_password = user.password.strip()
+        raw_password = user.password.strip()
 
-    user_doc = {
-        "email": user.email,
-        "password": hash_password(raw_password),
-        "role": "user"
-    }
+        print(f"DEBUG: Hashing password for {user.email}")
+        hashed = hash_password(raw_password)
+        print(f"DEBUG: Password hashed: {hashed[:10]}...")
 
-    user_collection.insert_one(user_doc)
-    return {"message": "User registered successfully"}
+        user_doc = {
+            "email": user.email,
+            "password": hashed,
+            "role": "user"
+        }
+
+        print("DEBUG: Inserting user into MongoDB")
+        user_collection.insert_one(user_doc)
+        print("DEBUG: Signup successful")
+        return {"message": "User registered successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"CRITICAL ERROR IN SIGNUP: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/login")

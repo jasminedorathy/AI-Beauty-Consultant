@@ -2,6 +2,10 @@ import { useState, useContext } from "react";
 import { analyzeImage } from "../../services/api";
 import { AuthContext } from "../../context/AuthContext";
 import ResultCard from "./ResultCard";
+import Loader from "../../components/Loader";
+import ErrorMessage from "../../components/ErrorMessage";
+import DemoModal from "../../components/DemoModal";
+import { getDemoResultById } from "../../data/demoData";
 
 const AnalyzePage = () => {
   const { token, logout } = useContext(AuthContext); // Destructure logout
@@ -10,6 +14,9 @@ const AnalyzePage = () => {
   const [preview, setPreview] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -28,6 +35,9 @@ const AnalyzePage = () => {
 
     try {
       setLoading(true);
+      setError(null); // Clear previous errors
+      setResult(null); // Clear previous results
+
       const res = await analyzeImage(formData);
       console.log("Analysis Result:", res);
 
@@ -48,28 +58,42 @@ const AnalyzePage = () => {
         };
       }
 
-      // Always display result, even if it contains an error (ResultCard handles it)
+      // Set successful result
       setResult(analysisData);
 
     } catch (e) {
       console.error(e);
+
       // Auto-logout if session expired
       if (e.response && e.response.status === 401) {
         logout();
         return; // Redirect happens automatically via ProtectedRoute
       }
 
-      // Check if server returned a structured error
-      let serverError = e.response?.data?.error || e.response?.data?.detail || "Analysis failed. Please check the backend logs.";
+      // Extract error message
+      let errorMsg = e.response?.data?.error || e.response?.data?.detail || e.message || "Analysis failed. Please try again.";
 
-      if (typeof serverError === 'object') {
-        serverError = JSON.stringify(serverError);
+      if (typeof errorMsg === 'object') {
+        errorMsg = JSON.stringify(errorMsg);
       }
 
-      // For network/server crashes, we create a synthetic result object to display the error in the card
-      setResult({ error: serverError, skinScores: {}, recommendations: [], faceShape: "N/A" });
+      // Set error state (will be displayed by ErrorMessage component)
+      setError(errorMsg);
+
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle Demo Selection
+  const handleDemoSelect = (demoId) => {
+    const demoData = getDemoResultById(demoId);
+    if (demoData) {
+      setPreview(demoData.imageUrl);
+      setResult(demoData.result);
+      setIsDemo(true);
+      setError(null);
+      setImage(null); // Clear actual image since this is demo
     }
   };
 
@@ -165,10 +189,63 @@ const AnalyzePage = () => {
               </span>
             ) : "Analyze Face"}
           </button>
+
+          {/* Divider */}
+          <div className="flex items-center gap-4 my-6">
+            <div className="flex-1 h-px bg-gray-300"></div>
+            <span className="text-gray-500 font-medium">OR</span>
+            <div className="flex-1 h-px bg-gray-300"></div>
+          </div>
+
+          {/* Try Demo Button */}
+          <button
+            onClick={() => setIsDemoModalOpen(true)}
+            className="w-full max-w-xs py-3.5 px-6 rounded-xl font-bold text-purple-600 border-2 border-purple-600 hover:bg-purple-50 transition-all duration-200 flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Try Sample Analysis
+          </button>
         </div>
 
+        {/* Demo Badge on Result */}
+        {isDemo && result && (
+          <div className="bg-gradient-to-r from-purple-100 to-teal-100 border-l-4 border-purple-600 p-4 rounded-lg mb-6 flex items-center gap-3">
+            <svg className="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <div className="flex-1">
+              <p className="font-bold text-purple-900">Demo Mode Active</p>
+              <p className="text-sm text-purple-800">This is a sample analysis. <a href="/signup" className="underline font-semibold">Sign up</a> to analyze your own photos!</p>
+            </div>
+          </div>
+        )}
+
+        {/* Loading Overlay */}
+        {loading && (
+          <div className="bg-white rounded-3xl shadow-xl p-8 mb-8">
+            <Loader variant="ai-analysis" message="Analyzing your beautiful features..." />
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && !loading && (
+          <div className="mb-8">
+            <ErrorMessage
+              type="error"
+              message={error}
+              technicalDetails={error}
+              showDetails={true}
+              onRetry={analyze}
+              onDismiss={() => setError(null)}
+            />
+          </div>
+        )}
+
         {/* Result Section */}
-        {result && (
+        {result && !loading && !error && (
           <div className="animate-fade-in-up">
             <ResultCard
               data={{
@@ -183,6 +260,13 @@ const AnalyzePage = () => {
           </div>
         )}
       </div>
+
+      {/* Demo Modal */}
+      <DemoModal
+        isOpen={isDemoModalOpen}
+        onClose={() => setIsDemoModalOpen(false)}
+        onSelectDemo={handleDemoSelect}
+      />
     </div>
   );
 };

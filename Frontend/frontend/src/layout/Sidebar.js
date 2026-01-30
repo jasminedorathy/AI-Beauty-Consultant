@@ -128,22 +128,6 @@ const Sidebar = () => {
           <NavItem to="/dashboard/history" icon={<FaHistory />} label="History" />
         </div>
       </nav>
-
-      {/* User Profile Footer */}
-      <div className="p-4 m-4 bg-gradient-to-r from-purple-50 to-teal-50 rounded-2xl border border-purple-100 flex items-center gap-3 hover:shadow-lg transition-all duration-300 cursor-pointer group animate-fade-in-up animation-delay-1100">
-        <div className="bg-gradient-to-br from-purple-500 to-teal-500 rounded-full p-2 text-white group-hover:scale-110 transition-transform shadow-lg">
-          <FaUserCircle size={20} />
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-bold text-gray-700">Welcome User</p>
-          <p className="text-xs text-gray-500">Free Plan</p>
-        </div>
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-          <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
-      </div>
     </aside>
   );
 };

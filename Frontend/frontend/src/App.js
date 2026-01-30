@@ -1,9 +1,11 @@
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider } from "./context/ThemeContext";
 
 import Login from "./auth/Login";
 import Signup from "./auth/Signup";
 import LandingPage from "./pages/LandingPage";
+import DemoResultsPage from "./pages/DemoResultsPage";
 import DashboardHome from "./pages/DashboardHome";
 
 import AnalyzePage from "./features/analysis/AnalyzePage";
@@ -14,45 +16,52 @@ import LiveAnalyzePage from "./features/camera/LiveAnalyzePage";
 import HairStyling from "./features/styling/HairStyling";
 import NailStyling from "./features/styling/NailStyling";
 import ServicesPage from "./features/services/ServicesPage";
+import SettingsPage from "./pages/SettingsPage";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import DashboardLayout from "./layout/DashboardLayout";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
 
-        {/* Landing Page */}
-        <Route path="/" element={<LandingPage />} />
+          {/* Landing Page */}
+          <Route path="/" element={<LandingPage />} />
 
-        {/* Public */}
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/login" element={<Login />} />
+          {/* Auth Pages */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/demo-results" element={<DemoResultsPage />} />
 
-        {/* Protected Dashboard */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<DashboardHome />} />
-          <Route path="analyze" element={<AnalyzePage />} />
-          <Route path="live" element={<LiveAnalyzePage />} />
-          <Route path="hair" element={<HairStyling />} />
-          <Route path="nails" element={<NailStyling />} />
-          <Route path="services" element={<ServicesPage />} />
-          <Route path="history" element={<HistoryPage />} />
-          <Route path="trends" element={<TrendsPage />} />
-        </Route>
+          {/* Protected Dashboard Routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<DashboardHome />} />
+            <Route path="analyze" element={<AnalyzePage />} />
+            <Route path="live-analyze" element={<LiveAnalyzePage />} />
+            <Route path="history" element={<HistoryPage />} />
+            <Route path="trends" element={<TrendsPage />} />
+            <Route path="hair-styling" element={<HairStyling />} />
+            <Route path="nail-styling" element={<NailStyling />} />
+            <Route path="services" element={<ServicesPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
 
-      </Routes>
-    </BrowserRouter>
+          {/* Catch-all redirect */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 
 export default App;
-

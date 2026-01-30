@@ -104,3 +104,6 @@ coverage/
 .cache/
 temp/
 tmp/
+
+# Virtual Environments
+Backend/tf_gpu/

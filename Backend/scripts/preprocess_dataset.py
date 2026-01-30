@@ -1,10 +1,12 @@
 """
-Face Shape Dataset Preprocessing Script
+Face Shape Dataset Preprocessing Script (OpenCV version)
 Downloads and preprocesses face shape dataset for EfficientNetV2S training
+
+This version uses OpenCV's Haar Cascade instead of dlib for easier Windows installation.
 
 Steps:
 1. Download dataset from Kaggle
-2. Detect faces using HOG + SVM
+2. Detect faces using Haar Cascade
 3. Crop faces to square regions
 4. Resize to 150x150 pixels
 5. Save preprocessed images
@@ -12,7 +14,6 @@ Steps:
 
 import os
 import cv2
-import dlib
 import numpy as np
 from pathlib import Path
 import shutil
@@ -27,8 +28,13 @@ TARGET_SIZE = 150
 # Face shape classes
 CLASSES = ["Heart", "Oblong", "Oval", "Round", "Square"]
 
-# Initialize face detector (HOG + Linear SVM)
-detector = dlib.get_frontal_face_detector()
+# Initialize Haar Cascade face detector (comes with OpenCV)
+cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+face_cascade = cv2.CascadeClassifier(cascade_path)
+
+if face_cascade.empty():
+    print("❌ Error loading Haar Cascade classifier!")
+    exit(1)
 
 
 def download_dataset():
@@ -74,7 +80,7 @@ def download_dataset():
 
 def detect_and_crop_face(image_path):
     """
-    Detect face in image and return cropped face region
+    Detect face in image and return cropped face region using Haar Cascade
     
     Args:
         image_path: Path to input image
@@ -87,28 +93,35 @@ def detect_and_crop_face(image_path):
     if img is None:
         return None
     
-    # Convert to RGB (dlib uses RGB)
-    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    # Convert to grayscale for detection
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     
     # Detect faces
-    faces = detector(rgb, 1)
+    # Parameters: scaleFactor, minNeighbors, minSize
+    faces = face_cascade.detectMultiScale(
+        gray,
+        scaleFactor=1.1,
+        minNeighbors=5,
+        minSize=(30, 30)
+    )
     
     if len(faces) == 0:
         return None
     
-    # Use first detected face
-    face = faces[0]
+    # Use first detected face (largest)
+    # Sort by area if multiple faces
+    if len(faces) > 1:
+        faces = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)
     
-    # Get face bounding box
-    x1, y1, x2, y2 = face.left(), face.top(), face.right(), face.bottom()
+    x, y, w, h = faces[0]
     
-    # Add padding (10% on each side)
-    h, w = img.shape[:2]
-    padding = int((x2 - x1) * 0.1)
-    x1 = max(0, x1 - padding)
-    y1 = max(0, y1 - padding)
-    x2 = min(w, x2 + padding)
-    y2 = min(h, y2 + padding)
+    # Add padding (15% on each side)
+    img_h, img_w = img.shape[:2]
+    padding = int(w * 0.15)
+    x1 = max(0, x - padding)
+    y1 = max(0, y - padding)
+    x2 = min(img_w, x + w + padding)
+    y2 = min(img_h, y + h + padding)
     
     # Crop face
     face_crop = img[y1:y2, x1:x2]
@@ -161,7 +174,7 @@ def preprocess_dataset():
         
         # Get all images
         image_files = []
-        for ext in ['*.jpg', '*.jpeg', '*.png']:
+        for ext in ['*.jpg', '*.jpeg', '*.png', '*.JPG', '*.JPEG', '*.PNG']:
             image_files.extend(class_dir.glob(ext))
         
         stats["per_class"][class_name] = {"total": 0, "success": 0, "failed": 0}
@@ -215,7 +228,7 @@ def verify_dataset():
 
 if __name__ == "__main__":
     print("="*60)
-    print("🎯 FACE SHAPE DATASET PREPROCESSING")
+    print("🎯 FACE SHAPE DATASET PREPROCESSING (OpenCV Version)")
     print("="*60)
     
     # Step 1: Download dataset

@@ -26,9 +26,13 @@ const ConsultantChat = () => {
 
         try {
             const res = await sendChat(userMsg);
+            console.log("Chat response:", res);
             setMessages(prev => [...prev, { text: res.reply, sender: "bot" }]);
         } catch (err) {
-            setMessages(prev => [...prev, { text: "Sorry, I'm having trouble connecting. Try again later.", sender: "bot" }]);
+            console.error("Chat error:", err);
+            console.error("Error response:", err.response?.data);
+            const errorMsg = err.response?.data?.detail || err.response?.data?.error || "Sorry, I'm having trouble connecting. Try again later.";
+            setMessages(prev => [...prev, { text: errorMsg, sender: "bot" }]);
         } finally {
             setLoading(false);
         }

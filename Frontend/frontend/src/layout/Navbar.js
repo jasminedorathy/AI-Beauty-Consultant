@@ -1,148 +1,147 @@
-import { useContext, useState, useEffect } from "react";
-import { AuthContext } from "../context/AuthContext";
-import { useNavigate, useLocation } from "react-router-dom";
-import { FaBell, FaCog, FaSignOutAlt, FaClock } from "react-icons/fa";
+import { useState, useEffect } from 'react';
+import { FaBell, FaCog, FaSignOutAlt } from 'react-icons/fa';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Navbar = () => {
-  const { token, logout } = useContext(AuthContext);
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [showNotifications, setShowNotifications] = useState(false);
+    const [currentTime, setCurrentTime] = useState(new Date());
+    const location = useLocation();
+    const navigate = useNavigate();
 
-  // Time State
-  const [currentTime, setCurrentTime] = useState(new Date());
+    // Extract username from email
+    const getUsername = () => {
+        const email = localStorage.getItem('email') || localStorage.getItem('username') || '';
 
-  // Update time every second
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+        // If it's an email, extract the part before @
+        if (email.includes('@')) {
+            return email.split('@')[0];
+        }
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+        // Otherwise return as is
+        return email || 'User';
+    };
 
-  // Helper: Get Greeting based on hour
-  const getGreeting = () => {
-    const hour = currentTime.getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 18) return "Good Afternoon";
-    return "Good Evening";
-  };
+    const username = getUsername();
 
-  // Helper: Extract name from token (Base64 decode)
-  const getUserName = () => {
-    if (!token) return "Guest";
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
+    // Update time every minute
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 60000);
+        return () => clearInterval(timer);
+    }, []);
 
-      const payload = JSON.parse(jsonPayload);
-      // Return name before @ of email
-      return payload.sub ? payload.sub.split('@')[0] : "User";
-    } catch (e) {
-      return "User";
-    }
-  };
+    const handleLogout = () => {
+        localStorage.clear();
+        window.location.href = '/login';
+    };
 
-  const userName = getUserName();
-  const greeting = getGreeting();
-  // Format time: HH:MM AM/PM
-  const timeString = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const handleSettings = () => {
+        navigate('/dashboard/settings');
+    };
 
-  // Generate Page Title from Path
-  const getPageTitle = () => {
-    const path = location.pathname.split("/").pop();
-    if (path === "analyze") return "Ready for Analysis 📸";
-    if (path === "live") return "Live Diagnostic 🎥";
-    if (path === "trends") return "Skin Trends 📈";
-    if (path === "hair") return "Hair Styling 💇";
-    if (path === "nails") return "Nail Studio 💅";
-    if (path === "services") return "Spa Menu 🌿";
-    return "Dashboard";
-  };
+    const handleNotifications = () => {
+        // Add notification functionality here
+        alert('No new notifications');
+    };
 
-  return (
-    <header className="bg-white/80 backdrop-blur-md sticky top-0 z-10 px-8 py-4 flex justify-between items-center shadow-sm border-b border-gray-100 transition-all">
+    // Get page title from route
+    const getPageTitle = () => {
+        const path = location.pathname;
+        if (path.includes('/analyze')) return 'Ready for Analysis';
+        if (path.includes('/live')) return 'Live Camera Analysis';
+        if (path.includes('/hair')) return 'Hair Styling';
+        if (path.includes('/nails')) return 'Nail Styling';
+        if (path.includes('/services')) return 'Services';
+        if (path.includes('/history')) return 'Analysis History';
+        if (path.includes('/trends')) return 'Skin Trends';
+        if (path.includes('/settings')) return 'Settings';
+        return 'Dashboard';
+    };
 
-      {/* Left: Page Title / Breadcrumbs */}
-      <div className="flex flex-col">
-        <h1 className="text-2xl font-bold text-gray-800">
-          {getPageTitle()}
-        </h1>
-        <p className="text-xs text-gray-500 font-medium tracking-wide">
-          AI BEAUTY CONSULTANT / {location.pathname.split("/").pop().toUpperCase()}
-        </p>
-      </div>
+    // Get greeting based on time
+    const getGreeting = () => {
+        const hour = currentTime.getHours();
+        if (hour < 12) return 'Good Morning';
+        if (hour < 18) return 'Good Afternoon';
+        return 'Good Evening';
+    };
 
-      {/* Center: Greetings & Time */}
-      <div className="hidden lg:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 items-center gap-6">
-        {/* Time Badge */}
-        <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-full border border-gray-100 text-gray-600 font-mono text-sm shadow-sm hover:shadow-md transition-shadow">
-          <FaClock className="text-blue-400" />
-          <span>{timeString}</span>
-        </div>
+    // Format time as HH:MM AM/PM
+    const formatTime = (date) => {
+        return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    };
 
-        {/* Greeting Text */}
-        <div className="flex flex-col text-left">
-          <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">{greeting}</span>
-          <div className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 capitalize">
-            {userName}
-          </div>
-        </div>
-      </div>
+    return (
+        <nav className="bg-white border-b border-gray-200 px-8 py-4 sticky top-0 z-50 shadow-sm">
+            <div className="flex items-center justify-between max-w-full">
 
-      {/* Right: Actions */}
-      <div className="flex items-center gap-4 border-l border-gray-200 pl-4 ml-auto">
-
-        {/* Notifications */}
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="p-3 rounded-full hover:bg-gray-100 text-gray-500 transition relative"
-          >
-            <FaBell size={18} />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-          </button>
-
-          {/* Dropdown Mockup */}
-          {showNotifications && (
-            <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 p-4 animate-fade-in-up">
-              <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Notifications</h4>
-              <div className="space-y-3">
-                <div className="flex gap-3 items-start">
-                  <div className="w-2 h-2 mt-1.5 bg-blue-500 rounded-full shrink-0"></div>
-                  <p className="text-sm text-gray-600">New Hair Styling features added! Check sidebar.</p>
+                {/* Left - Page Title & Breadcrumb */}
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-xl font-bold text-gray-800 tracking-tight">{getPageTitle()}</h1>
+                        <span className="text-2xl">📸</span>
+                    </div>
+                    <p className="text-xs text-gray-500 font-medium tracking-wide mt-0.5">
+                        AI BEAUTY CONSULTANT / ANALYZE
+                    </p>
                 </div>
-                <div className="flex gap-3 items-start">
-                  <div className="w-2 h-2 mt-1.5 bg-green-500 rounded-full shrink-0"></div>
-                  <p className="text-sm text-gray-600">Your analysis history is saved securely.</p>
+
+                {/* Left - Time and User Greeting */}
+                <div className="flex items-center gap-4">
+                    {/* Time Display */}
+                    <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">
+                        <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm font-semibold text-blue-700">{formatTime(currentTime)}</span>
+                    </div>
+
+                    {/* User Greeting */}
+                    <div className="flex flex-col">
+                        <span className="text-xs text-gray-500 font-medium">{getGreeting()}</span>
+                        <span className="text-sm font-bold text-blue-600">{username}</span>
+                    </div>
                 </div>
-              </div>
+
+                {/* Right - User Actions */}
+                <div className="flex items-center gap-3">
+
+                    {/* Notification Bell */}
+                    <button
+                        onClick={handleNotifications}
+                        className="relative p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                        title="Notifications"
+                    >
+                        <FaBell size={18} />
+                        <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                    </button>
+
+                    {/* Settings */}
+                    <button
+                        onClick={handleSettings}
+                        className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                        title="Settings"
+                    >
+                        <FaCog size={18} />
+                    </button>
+
+                    {/* Logout Button */}
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
+                    >
+                        <FaSignOutAlt size={14} />
+                        Logout
+                    </button>
+                </div>
             </div>
-          )}
-        </div>
-
-        {/* Global Settings */}
-        <button className="p-3 rounded-full hover:bg-gray-100 text-gray-500 transition">
-          <FaCog size={18} />
-        </button>
-
-        {/* Logout Button (Styled) */}
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 bg-red-50 border border-red-100 px-4 py-2 rounded-full text-red-600 font-medium hover:bg-red-500 hover:text-white hover:border-red-500 transition-all shadow-sm"
-        >
-          <FaSignOutAlt />
-          <span className="hidden md:inline">Logout</span>
-        </button>
-      </div>
-    </header>
-  );
+        </nav>
+    );
 };
 
 export default Navbar;
+

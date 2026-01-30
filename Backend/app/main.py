@@ -38,11 +38,16 @@ app.add_middleware(
 # 3️⃣ IMPORT ROUTERS AFTER app EXISTS
 from app.api.routes import router as analysis_router
 from app.api.auth_routes import router as auth_router
+from app.api.settings_routes import router as settings_router
+from app.api.password_routes import router as password_router
+from app.api.twofa_routes import router as twofa_router
 
-# 4️⃣ REGISTER ROUTERS
 # 4️⃣ REGISTER ROUTERS
 app.include_router(auth_router)
 app.include_router(analysis_router)
+app.include_router(settings_router)
+app.include_router(password_router)
+app.include_router(twofa_router)
 
 # 5️⃣ SERVE STATIC FILES (Images)
 from fastapi.staticfiles import StaticFiles

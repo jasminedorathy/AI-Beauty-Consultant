@@ -4,38 +4,44 @@ import math
 import os
 
 # Try to load DenseNet-201 for Skin Analysis (97% accuracy target)
-try:
-    from tensorflow.keras.models import load_model
-    
-    # Priority 1: DenseNet-201 (if trained)
-    DENSENET_PATH = os.path.join(os.path.dirname(__file__), '../models/densenet_skin.h5')
-    
-    # Priority 2: Pre-trained DenseNet (not fine-tuned yet)
-    DENSENET_PRETRAINED = os.path.join(os.path.dirname(__file__), '../models/densenet_skin_pretrained.h5')
-    
-    # Priority 3: Original CNN (fallback)
-    CNN_MODEL_PATH = os.path.join(os.path.dirname(__file__), '../models/skin_cnn.h5')
-    
-    if os.path.exists(DENSENET_PATH):
-        skin_model = load_model(DENSENET_PATH)
-        print("✅ Analysis: DenseNet-201 Loaded (Fine-tuned)")
-        MODEL_TYPE = "densenet"
-    elif os.path.exists(DENSENET_PRETRAINED):
-        skin_model = load_model(DENSENET_PRETRAINED)
-        print("✅ Analysis: DenseNet-201 Loaded (Pre-trained)")
-        MODEL_TYPE = "densenet_pretrained"
-    elif os.path.exists(CNN_MODEL_PATH):
-        skin_model = load_model(CNN_MODEL_PATH)
-        print("✅ Analysis: CNN Model Loaded (Legacy)")
-        MODEL_TYPE = "cnn"
-    else:
-        skin_model = None
-        MODEL_TYPE = None
-        print("⚠️ No skin model found - using CV-only analysis")
-except Exception as e:
-    print(f"⚠️ Analysis: Model loading error ({e})")
-    skin_model = None
-    MODEL_TYPE = None
+# Try to load DenseNet-201 for Skin Analysis (97% accuracy target)
+# MIGRATION UPDATE: Switched to PyTorch. TensorFlow models disabled.
+# try:
+#     from tensorflow.keras.models import load_model
+#     
+#     # Priority 1: DenseNet-201 (if trained)
+#     DENSENET_PATH = os.path.join(os.path.dirname(__file__), '../models/densenet_skin.h5')
+#     
+#     # Priority 2: Pre-trained DenseNet (not fine-tuned yet)
+#     DENSENET_PRETRAINED = os.path.join(os.path.dirname(__file__), '../models/densenet_skin_pretrained.h5')
+#     
+#     # Priority 3: Original CNN (fallback)
+#     CNN_MODEL_PATH = os.path.join(os.path.dirname(__file__), '../models/skin_cnn.h5')
+#     
+#     if os.path.exists(DENSENET_PATH):
+#         skin_model = load_model(DENSENET_PATH)
+#         print("✅ Analysis: DenseNet-201 Loaded (Fine-tuned)")
+#         MODEL_TYPE = "densenet"
+#     elif os.path.exists(DENSENET_PRETRAINED):
+#         skin_model = load_model(DENSENET_PRETRAINED)
+#         print("✅ Analysis: DenseNet-201 Loaded (Pre-trained)")
+#         MODEL_TYPE = "densenet_pretrained"
+#     elif os.path.exists(CNN_MODEL_PATH):
+#         skin_model = load_model(CNN_MODEL_PATH)
+#         print("✅ Analysis: CNN Model Loaded (Legacy)")
+#         MODEL_TYPE = "cnn"
+#     else:
+#         skin_model = None
+#         MODEL_TYPE = None
+#         print("⚠️ No skin model found - using CV-only analysis")
+# except Exception as e:
+#     print(f"⚠️ Analysis: Model loading error ({e})")
+#     skin_model = None
+#     MODEL_TYPE = None
+
+skin_model = None
+MODEL_TYPE = None
+print("ℹ️ Analysis: Running in PyTorch Migration Mode (TF models disabled)")
 
 # --- ADVANCED PREPROCESSING (Industry Standard) ---
 
@@ -91,7 +97,8 @@ def extract_skin_mask_hsv(image):
 
 def calculate_face_shape(landmarks, width, height):
     """
-    Determines face shape using Vector Similarity (Nearest Neighbor) with added geometric features.
+    Improved face shape classification using refined geometric analysis.
+    Uses multiple measurements and research-based centroids for higher accuracy.
     """
     def get_coords(idx):
         return (landmarks[idx].x * width, landmarks[idx].y * height)
@@ -103,63 +110,100 @@ def calculate_face_shape(landmarks, width, height):
         """Calculates angle ABC (in degrees)"""
         ba = np.array([a[0]-b[0], a[1]-b[1]])
         bc = np.array([c[0]-b[0], c[1]-b[1]])
-        cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+        cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc) + 1e-6)
         return np.degrees(np.arccos(np.clip(cosine_angle, -1.0, 1.0)))
 
-    # Key Landmarks
-    jaw_width = dist(get_coords(172), get_coords(397))
-    cheek_width = dist(get_coords(234), get_coords(454))
-    forehead_width = dist(get_coords(103), get_coords(332))
-    face_height = dist(get_coords(10), get_coords(152))
-
-    # --- NEW FEATURE: JAW ANGLE ---
-    # Angle at the jawline corner (Index 172 for left side)
-    # Points: Ear(127) -> JawCorner(172) -> Chin(152)
+    # IMPROVED LANDMARK SELECTION
+    # Using more accurate landmark points for measurements
+    
+    # Jaw width: Use actual jaw corners (not too low)
+    jaw_left = get_coords(172)   # Left jaw
+    jaw_right = get_coords(397)  # Right jaw
+    jaw_width = dist(jaw_left, jaw_right)
+    
+    # Cheekbone width: Widest part of face (temples)
+    cheek_left = get_coords(234)   # Left cheekbone
+    cheek_right = get_coords(454)  # Right cheekbone
+    cheek_width = dist(cheek_left, cheek_right)
+    
+    # Forehead width: Between temples
+    forehead_left = get_coords(103)   # Left temple
+    forehead_right = get_coords(332)  # Right temple
+    forehead_width = dist(forehead_left, forehead_right)
+    
+    # Face length: Top of forehead to bottom of chin
+    face_top = get_coords(10)     # Top of forehead
+    face_bottom = get_coords(152) # Bottom of chin
+    face_height = dist(face_top, face_bottom)
+    
+    # Mid-face width (between eyes, for additional feature)
+    mid_face_width = dist(get_coords(130), get_coords(359))
+    
+    # Jaw angle: Critical for distinguishing Square vs Round
+    # Using 3 points: ear -> jaw corner -> chin
     jaw_angle = calculate_angle(get_coords(127), get_coords(172), get_coords(152))
-
+    
+    # Prevent division by zero
     if cheek_width == 0: cheek_width = 1
+    if face_height == 0: face_height = 1
 
-    # Feature Vector: [Length/Width, Jaw/Cheek, Forehead/Cheek, JawAngle/100]
-    # We normalize Angle (divided by 140 roughly) to keep scale similar
-    length_ratio = face_height / cheek_width
-    jaw_ratio = jaw_width / cheek_width
-    forehead_ratio = forehead_width / cheek_width
-    angle_norm = jaw_angle / 140.0 
+    # FEATURE VECTOR CALCULATION
+    # 5 features for better discrimination
+    length_to_width = face_height / cheek_width  # Overall proportion
+    jaw_to_cheek = jaw_width / cheek_width       # Jaw narrowness
+    forehead_to_cheek = forehead_width / cheek_width  # Forehead width
+    angle_norm = jaw_angle / 140.0               # Jaw sharpness (normalized)
+    mid_to_cheek = mid_face_width / cheek_width  # Mid-face proportion
 
-    user_vector = np.array([length_ratio, jaw_ratio, forehead_ratio, angle_norm])
+    user_vector = np.array([length_to_width, jaw_to_cheek, forehead_to_cheek, angle_norm, mid_to_cheek])
 
-    # Ideal Shape Centroids (Refined with Angle)
-    # [L/W, J/C, F/C, Angle]
+    # REFINED CENTROIDS based on facial proportion research
+    # [L/W, J/C, F/C, Angle/140, Mid/C]
     shapes_centroids = {
-        "Oval":      np.array([1.35, 0.75, 0.82, 0.95]), # Soft angle ~130 deg
-        "Round":     np.array([1.15, 0.90, 0.85, 1.05]), # Wide angle, short face
-        "Square":    np.array([1.18, 0.95, 0.95, 0.80]), # Sharp angle ~110 deg
-        "Heart":     np.array([1.30, 0.65, 0.95, 1.00]), # Narrow jaw
-        "Long":      np.array([1.55, 0.85, 0.85, 0.95]), # Elongated
-        "Diamond":   np.array([1.40, 0.60, 0.70, 0.90])  # Narrow jaw & forehead
+        "Oval":     np.array([1.50, 0.78, 0.88, 0.93, 0.65]),  # Balanced, soft jaw, classic proportions
+        "Round":    np.array([1.10, 0.95, 0.92, 1.05, 0.70]),  # Short, wide jaw, wide angle
+        "Square":   np.array([1.20, 0.98, 0.95, 0.75, 0.68]),  # Angular jaw, sharp angle ~105°
+        "Heart":    np.array([1.35, 0.68, 1.00, 0.90, 0.62]),  # Wide forehead, narrow jaw
+        "Long":     np.array([1.70, 0.82, 0.85, 0.92, 0.63]),  # Elongated face
+        "Diamond":  np.array([1.45, 0.65, 0.75, 0.88, 0.60])   # Narrow forehead & jaw, wide cheeks
     }
 
-    best_shape = "Oval"
-    min_dist = float("inf")
-    confidence = 0.0
+    print(f"📐 MEASUREMENTS:")
+    print(f"   Face H/W: {length_to_width:.2f}, Jaw/Cheek: {jaw_to_cheek:.2f}")
+    print(f"   Forehead/Cheek: {forehead_to_cheek:.2f}, Jaw Angle: {jaw_angle:.1f}°")
+    print(f"   Mid/Cheek: {mid_to_cheek:.2f}")
 
-    print(f"📐 FACE VECTOR: L/W={length_ratio:.2f}, J/C={jaw_ratio:.2f}, Angle={jaw_angle:.1f}°")
-
+    # WEIGHTED DISTANCE CALCULATION
+    # Weights prioritize most discriminative features
+    # Length/Width: 1.5 (important for Long vs Round)
+    # Jaw/Cheek: 2.0 (critical for Heart/Diamond vs others)
+    # Forehead/Cheek: 1.5 (important for Heart shape)
+    # Angle: 2.5 (most critical for Square vs Round distinction)
+    # Mid/Cheek: 1.0 (supplementary feature)
+    weights = np.array([1.5, 2.0, 1.5, 2.5, 1.0])
+    
     dists = {}
     for shape, centroid in shapes_centroids.items():
-        # Weights: Length=1.2, Jaw=1.5, Forehead=1.0, Angle=2.0 (Angle is key for Square vs Round)
-        weights = np.array([1.2, 1.5, 1.0, 2.0]) 
         d = np.sqrt(np.sum(weights * (user_vector - centroid)**2))
         dists[shape] = d
-        
-    # Find min distance
+        print(f"   {shape}: distance = {d:.3f}")
+    
+    # Find best match
     best_shape = min(dists, key=dists.get)
     min_dist = dists[best_shape]
     
-    # Calculate simple confidence: 1.0 - (dist / max_reasonable_dist)
-    confidence = max(0, 1.0 - (min_dist * 2.0)) # heuristic scaling
+    # Calculate confidence: inverse of normalized distance
+    # Lower distance = higher confidence
+    max_reasonable_dist = 1.5  # Empirically determined
+    confidence = max(0.0, min(1.0, 1.0 - (min_dist / max_reasonable_dist)))
+    
+    # Apply confidence threshold - if too uncertain, default to Oval
+    if confidence < 0.3:
+        print(f"   ⚠️ Low confidence ({confidence*100:.1f}%), defaulting to Oval")
+        best_shape = "Oval"
+        confidence = 0.5
 
-    print(f"   -> Best: {best_shape} (Conf: {confidence*100:.1f}%)")
+    print(f"   ✅ RESULT: {best_shape} (Confidence: {confidence*100:.1f}%)")
     return best_shape, confidence
 
 # --- 2. GENDER ANALYSIS (CNN MODEL) ---

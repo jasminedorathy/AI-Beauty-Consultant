@@ -103,7 +103,7 @@ def build_model():
     # Classification head
     x = layers.GlobalAveragePooling2D()(x)
     x = layers.Dense(1280, activation='relu', name='fc1')(x)
-    outputs = layers.Dense(NUM_CLASSES, activation='softmax', name='predictions')(outputs)
+    outputs = layers.Dense(NUM_CLASSES, activation='softmax', name='predictions')(x)
     
     model = keras.Model(inputs, outputs, name='EfficientNetV2S_FaceShape')
     
