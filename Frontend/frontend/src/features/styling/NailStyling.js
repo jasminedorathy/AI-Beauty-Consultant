@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getHistory } from '../../services/api';
+import { FaSpinner, FaHistory } from 'react-icons/fa';
 
 const NAIL_TRENDS = {
     Light: [
@@ -18,6 +20,38 @@ const NAIL_TRENDS = {
 const NailStyling = () => {
     const [skinTone, setSkinTone] = useState("Medium");
     const [occasion, setOccasion] = useState("Daily");
+    const [loading, setLoading] = useState(true);
+    const [hasAnalysis, setHasAnalysis] = useState(false);
+
+    useEffect(() => {
+        const fetchHistory = async () => {
+            try {
+                const history = await getHistory();
+                if (history && history.length > 0) {
+                    const latest = history[0];
+                    if (latest.skin_tone) {
+                        // Map backend skin tone to "Light", "Medium", "Dark"
+                        const toneMap = {
+                            "Fair": "Light",
+                            "Light": "Light",
+                            "Medium": "Medium",
+                            "Tan": "Medium",
+                            "Brown": "Dark",
+                            "Dark": "Dark",
+                            "Deep": "Dark"
+                        };
+                        setSkinTone(toneMap[latest.skin_tone] || "Medium");
+                        setHasAnalysis(true);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch history:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchHistory();
+    }, []);
 
     // Filter Logic
     const currentTrends = NAIL_TRENDS[skinTone].filter(t =>
@@ -30,6 +64,12 @@ const NailStyling = () => {
                 <div className="text-center mb-10">
                     <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-purple-600 mb-2">Nail Art Studio 💅</h1>
                     <p className="text-gray-500 text-lg">Curated palettes and designs for your hands.</p>
+
+                    {hasAnalysis && (
+                        <div className="inline-flex items-center gap-2 mt-4 px-4 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-bold border border-green-200">
+                            <FaHistory /> Auto-Customized based on your last analysis
+                        </div>
+                    )}
                 </div>
 
                 {/* Controls Section */}

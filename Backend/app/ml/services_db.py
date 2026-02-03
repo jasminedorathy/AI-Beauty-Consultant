@@ -78,7 +78,10 @@ HAIRSTYLES = {
         "Square": ["Buzz Cut", "Crew Cut", "Undercut"],
         "Diamond": ["Textured Crop", "Fringes", "Messy Waves"],
         "Heart": ["Side Swept Part", "Longer Lengths", "Beard with Volume"],
-        "Long": ["Man Bun", "Side Part", "Classic Short Back & Sides"]
+        "Long": ["Man Bun", "Side Part", "Classic Short Back & Sides"],
+        "Pear": ["Textured Pompadour", "Side Part with Volume", "Taper Fade"],
+        "Rectangle": ["Side Part", "Crew Cut with Side Volume", "Fringe"],
+        "Triangle": ["High Fade with Thick Top", "Quiff", "Side Swept Part"]
     },
     "Female": {
         "Oval": ["Blunt Bob", "Long Waves", "Shoulder-Length Cut"],
@@ -86,6 +89,9 @@ HAIRSTYLES = {
         "Square": ["Soft Curtain Bangs", "Long Straight Hair", "Textured Lob"],
         "Diamond": ["Chin-Length Bob", "Deep Side Part", "Pulled Back Ponytail"],
         "Heart": ["Bouncy Layers", "Side Part Pixie", "Lob with Volume"],
-        "Long": ["Blowout Curls", "Bangs with Layers", "Chin-Length Bob"]
+        "Long": ["Blowout Curls", "Bangs with Layers", "Chin-Length Bob"],
+        "Pear": ["Side-swept Bangs", "Long Layers with Volume", "Shag Cut"],
+        "Rectangle": ["Curtain Bangs", "Volume at Sides", "Rounded Bob"],
+        "Triangle": ["Volume at Crown", "Layered Lob", "Side Swept Bangs"]
     }
 }

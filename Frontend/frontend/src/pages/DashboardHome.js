@@ -1,7 +1,28 @@
 import { Link } from 'react-router-dom';
-import { FaCamera, FaMagic, FaCut, FaPaintBrush, FaChartLine, FaCheckCircle, FaExclamationTriangle, FaInfoCircle } from 'react-icons/fa';
+import { useState, useEffect } from 'react';
+import { FaCamera, FaMagic, FaCut, FaPaintBrush, FaChartLine, FaCheckCircle, FaExclamationTriangle, FaInfoCircle, FaCrown, FaArrowUp } from 'react-icons/fa';
+import { getUserRole, getUserStats } from '../services/premiumApi';
 
 const DashboardHome = () => {
+  const [userRole, setUserRole] = useState(null);
+  const [userStats, setUserStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const [role, stats] = await Promise.all([getUserRole(), getUserStats()]);
+        setUserRole(role);
+        setUserStats(stats);
+      } catch (err) {
+        console.error('Failed to fetch user data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUserData();
+  }, []);
+
   // Recent Analysis Data
   const recentAnalyses = [
     { date: '2 days ago', skinType: 'Combination', concerns: ['Dark Spots', 'Fine Lines'], status: 'completed' },
@@ -50,7 +71,7 @@ const DashboardHome = () => {
       title: 'Live Camera',
       desc: 'Real-time face analysis with your webcam',
       icon: <FaCamera className="text-4xl" />,
-      link: '/dashboard/live',
+      link: '/dashboard/live-analyze',
       gradient: 'from-blue-600 to-cyan-600',
       badge: 'New'
     },
@@ -58,14 +79,14 @@ const DashboardHome = () => {
       title: 'Hair Styling',
       desc: 'Get personalized hairstyle recommendations',
       icon: <FaCut className="text-4xl" />,
-      link: '/dashboard/hair',
+      link: '/dashboard/hair-styling',
       gradient: 'from-orange-600 to-red-600',
     },
     {
       title: 'Nail Studio',
       desc: 'Discover nail art that matches your style',
       icon: <FaPaintBrush className="text-4xl" />,
-      link: '/dashboard/nails',
+      link: '/dashboard/nail-styling',
       gradient: 'from-teal-600 to-cyan-600',
       badge: 'New'
     },
@@ -73,6 +94,59 @@ const DashboardHome = () => {
 
   return (
     <div className="space-y-8">
+      {/* Premium Status Banner */}
+      {!loading && userRole && (
+        userRole.is_premium ? (
+          <div className="glass-card p-6 rounded-3xl bg-gradient-to-r from-yellow-50 via-purple-50 to-pink-50 border-2 border-yellow-300">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="bg-gradient-to-r from-yellow-400 to-yellow-600 p-4 rounded-2xl">
+                  <FaCrown className="text-3xl text-white animate-pulse" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    Premium Member
+                  </h2>
+                  <p className="text-gray-600">
+                    Enjoying unlimited access until {userRole.subscription_end && new Date(userRole.subscription_end).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-500">This Month</p>
+                <p className="text-3xl font-bold text-purple-600">
+                  {userStats?.analysis_count_this_month || 0} <span className="text-lg text-gray-400">analyses</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="glass-card p-6 rounded-3xl bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-4 rounded-2xl">
+                  <FaArrowUp className="text-3xl text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">
+                    Upgrade to Premium
+                  </h2>
+                  <p className="text-gray-600">
+                    {userStats?.analysis_count_this_month || 0}/{userStats?.limits?.analysis_per_month || 10} analyses used this month
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/premium"
+                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-bold hover:scale-105 transition-transform shadow-lg"
+              >
+                Upgrade Now
+              </Link>
+            </div>
+          </div>
+        )
+      )}
+
       {/* Welcome Section */}
       <div className="glass-card p-8 rounded-3xl">
         <h1 className="text-4xl font-bold gradient-text mb-2">

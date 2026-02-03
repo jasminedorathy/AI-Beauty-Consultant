@@ -28,7 +28,24 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 @router.post("/analyze")
 async def analyze_face(image: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     try:
-        print(f"🔍 STARTING ANALYSIS for user: {current_user.get('sub')}")
+        user_email = current_user.get('sub')
+        print(f"🔍 STARTING ANALYSIS for user: {user_email}")
+        
+        # Check usage limits (RBAC)
+        from app.auth.rbac import check_usage_limit, increment_usage, get_user_role
+        
+        usage_check = check_usage_limit(user_email, "analysis_per_month")
+        if not usage_check["allowed"]:
+            return {
+                "error": "Usage limit reached",
+                "message": usage_check["message"],
+                "current": usage_check["current"],
+                "limit": usage_check["limit"],
+                "upgrade_required": True
+            }
+        
+        print(f"✅ Usage check passed: {usage_check['message']}")
+        
         img_bytes = await image.read()
         img = read_image(img_bytes)
         
@@ -57,7 +74,7 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
         from app.ml.analysis_cv import classify_gender_geometric
         
         # Unpack tuple (Shape, Confidence)
-        shape_name, shape_conf = calculate_face_shape(landmarks, img.shape[1], img.shape[0])
+        shape_name, shape_conf = calculate_face_shape(landmarks, img.shape[1], img.shape[0], img)
         gender = classify_gender_geometric(landmarks, img.shape[1], img.shape[0], img)
 
         # 2. Skin Analysis (OpenCV)
@@ -84,6 +101,21 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
             eye_color=eye_color, hair_color=hair_color,
             season=season
         )
+
+        # 5. Generate AI-Powered Personalized Tips (NEW)
+        from app.ml.personalized_tips import generate_personalized_tips
+        
+        personalized_tips = generate_personalized_tips(
+            face_shape=shape_name,
+            gender=gender,
+            skin_scores=skin_scores,
+            skin_tone=skin_tone,
+            undertone=undertone,
+            eye_color=eye_color,
+            hair_color=hair_color,
+            season=season
+        )
+        print(f"✨ Generated {len(personalized_tips)} personalized tips for user")
 
         # --- GENERATE ANNOTATED IMAGE ---
         annotated_img = generate_annotated_image(img, landmarks, gender)
@@ -124,10 +156,15 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
                 "hair_color": hair_color,
                 "season": season,
                 "recommendations": recommendations,
+                "personalized_tips": personalized_tips,
                 "created_at": datetime.utcnow()
             }
             analysis_collection.insert_one(analysis_doc)
             print(f"✅ Saved analysis for user {current_user.get('sub')}")
+            
+            # Increment usage counter
+            increment_usage(user_email, "analysis")
+            print(f"📊 Usage incremented for {user_email}")
 
         except Exception as db_err:
             print(f"⚠️ DB Save Failed: {db_err}")
@@ -157,6 +194,7 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
                     "season": season
                 },
                 "recommendations": recommendations,
+                "personalized_tips": personalized_tips,
                 "image_url": image_url,
                 "annotated_image_url": annotated_image_url
             }

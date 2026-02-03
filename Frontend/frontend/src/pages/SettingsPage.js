@@ -1,5 +1,9 @@
-import { useState } from 'react';
-import { FaUser, FaBell, FaLock, FaPalette, FaSave, FaCamera, FaChartLine, FaShieldAlt, FaClock, FaGlobe, FaTimes, FaDownload, FaExclamationTriangle, FaBullseye, FaShoppingCart, FaHistory, FaRobot, FaUniversalAccess, FaLink, FaUsers, FaCreditCard, FaCode, FaCheck } from 'react-icons/fa';
+import { useState, useEffect } from 'react';
+import { FaUser, FaBell, FaLock, FaPalette, FaSave, FaCamera, FaChartLine, FaShieldAlt, FaClock, FaGlobe, FaTimes, FaDownload, FaExclamationTriangle, FaBullseye, FaShoppingCart, FaHistory, FaRobot, FaUniversalAccess, FaLink, FaUsers, FaCreditCard, FaCode, FaCheck, FaQrcode, FaKey, FaCrown } from 'react-icons/fa';
+import { getSettings, updateSettings, changePassword, deleteAccount, enable2FA, verify2FA, disable2FA, get2FAStatus } from '../services/api';
+import { getUserRole, cancelSubscription } from '../services/premiumApi';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const SettingsPage = () => {
     const [activeTab, setActiveTab] = useState('general');
@@ -69,7 +73,102 @@ const SettingsPage = () => {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
+    // 2FA State
+    const [twoFAEnabled, setTwoFAEnabled] = useState(false);
+    const [twoFAStep, setTwoFAStep] = useState('initial'); // 'initial', 'setup', 'verify'
+    const [qrCode, setQrCode] = useState('');
+    const [twoFASecret, setTwoFASecret] = useState('');
+    const [backupCodes, setBackupCodes] = useState([]);
+    const [verificationCode, setVerificationCode] = useState('');
+
+    const [isPremium, setIsPremium] = useState(false);
+    const [subEndDate, setSubEndDate] = useState(null);
+
     const [saveMessage, setSaveMessage] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                setLoading(true);
+                const data = await getSettings();
+
+                // Map nested settings to flat state
+                setNotifications(data.notifications?.push_notifications ?? true);
+                setEmailNotifications(data.notifications?.email_notifications ?? false);
+                setDarkMode(data.dark_mode ?? false);
+                setLanguage(data.language ?? 'en');
+
+                setAgeRange(data.profile?.age_range ?? '25-34');
+                setGender(data.profile?.gender ?? 'prefer-not-to-say');
+                setSkinConcerns(data.profile?.skin_concerns ?? []);
+                setAllergies(data.profile?.allergies ?? '');
+                setBudgetPreference(data.profile?.budget_preference ?? 'medium');
+
+                setSkinType(data.analysis?.skin_type ?? 'combination');
+                setAnalysisDetail(data.analysis?.analysis_detail ?? 'detailed');
+                setAutoSave(data.analysis?.auto_save ?? true);
+
+                setSkinGoals(data.goals?.skin_goals ?? ['clear-skin']);
+                setTargetTimeline(data.goals?.target_timeline ?? '3-months');
+                setProgressPhotos(data.goals?.progress_photos ?? true);
+                setGoalReminders(data.goals?.goal_reminders ?? true);
+
+                setIngredientPrefs(data.products?.ingredient_prefs ?? ['natural']);
+                setPriceRange(data.products?.price_range ?? [0, 100]);
+                setShowSponsored(data.products?.show_sponsored ?? true);
+
+                setDefaultCamera(data.camera?.default_camera ?? 'front');
+                setImageQuality(data.camera?.image_quality ?? 'high');
+                setLightingGuidance(data.camera?.lighting_guidance ?? true);
+                setGridOverlay(data.camera?.grid_overlay ?? false);
+                setAutoCapture(data.camera?.auto_capture ?? false);
+
+                setModelVersion(data.ai_model?.model_version ?? 'latest');
+                setAnalysisSpeed(data.ai_model?.analysis_speed ?? 'balanced');
+                setConfidenceThreshold(data.ai_model?.confidence_threshold ?? 70);
+                setBetaFeatures(data.ai_model?.beta_features ?? false);
+
+                setDataSharing(data.privacy?.data_sharing ?? false);
+                setAutoDelete(data.privacy?.auto_delete ?? 'never');
+                setHistoryRetention(data.privacy?.history_retention ?? 'forever');
+
+                setSkinRoutineReminder(data.notifications?.skin_routine_reminder ?? false);
+                setReanalysisReminder(data.notifications?.reanalysis_reminder ?? 'weekly');
+
+                setFontSize(data.accessibility?.font_size ?? 'medium');
+                setHighContrast(data.accessibility?.high_contrast ?? false);
+                setReduceMotion(data.accessibility?.reduce_motion ?? false);
+            } catch (err) {
+                console.error("Failed to fetch settings:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        const fetch2FAStatus = async () => {
+            try {
+                const status = await get2FAStatus();
+                setTwoFAEnabled(status.enabled);
+            } catch (err) {
+                console.error("Failed to fetch 2FA status:", err);
+            }
+        };
+
+        const fetchPremiumStatus = async () => {
+            try {
+                const role = await getUserRole();
+                setIsPremium(role.is_premium);
+                setSubEndDate(role.subscription_end);
+            } catch (err) {
+                console.error("Failed to fetch premium status:", err);
+            }
+        };
+
+        fetchSettings();
+        fetch2FAStatus();
+        fetchPremiumStatus();
+    }, []);
 
     const tabs = [
         { id: 'general', label: 'General', icon: FaUser, color: 'from-blue-500 to-blue-600' },
@@ -82,74 +181,198 @@ const SettingsPage = () => {
         { id: 'privacy', label: 'Privacy', icon: FaShieldAlt, color: 'from-teal-500 to-teal-600' },
         { id: 'accessibility', label: 'Accessibility', icon: FaUniversalAccess, color: 'from-violet-500 to-violet-600' },
         { id: 'security', label: 'Security', icon: FaLock, color: 'from-red-500 to-red-600' },
+        { id: 'plan', label: 'My Plan', icon: FaCreditCard, color: 'from-amber-500 to-yellow-600' },
     ];
 
-    const handleSave = () => {
-        const settings = {
-            notifications, emailNotifications, darkMode, language,
-            ageRange, gender, skinConcerns, allergies, budgetPreference,
-            skinType, analysisDetail, autoSave,
-            skinGoals, targetTimeline, progressPhotos, goalReminders,
-            ingredientPrefs, priceRange, showSponsored,
-            defaultCamera, imageQuality, lightingGuidance, gridOverlay, autoCapture,
-            modelVersion, analysisSpeed, confidenceThreshold, betaFeatures,
-            dataSharing, autoDelete, historyRetention,
-            skinRoutineReminder, reanalysisReminder,
-            fontSize, highContrast, reduceMotion
+    const handleSave = async () => {
+        const settingsPayload = {
+            user_email: email,
+            language,
+            dark_mode: darkMode,
+            profile: { age_range: ageRange, gender, skin_concerns: skinConcerns, allergies, budget_preference: budgetPreference },
+            analysis: { skin_type: skinType, analysis_detail: analysisDetail, auto_save: autoSave },
+            camera: { default_camera: defaultCamera, image_quality: imageQuality, lighting_guidance: lightingGuidance, grid_overlay: gridOverlay, auto_capture: autoCapture },
+            ai_model: { model_version: modelVersion, analysis_speed: analysisSpeed, confidence_threshold: confidenceThreshold, beta_features: betaFeatures },
+            notifications: { push_notifications: notifications, email_notifications: emailNotifications, skin_routine_reminder: skinRoutineReminder, reanalysis_reminder: reanalysisReminder },
+            privacy: { data_sharing: dataSharing, auto_delete: autoDelete, history_retention: historyRetention },
+            goals: { skin_goals: skinGoals, target_timeline: targetTimeline, progress_photos: progressPhotos, goal_reminders: goalReminders },
+            products: { ingredient_prefs: ingredientPrefs, price_range: priceRange, show_sponsored: showSponsored },
+            accessibility: { font_size: fontSize, high_contrast: highContrast, reduce_motion: reduceMotion }
         };
-        localStorage.setItem('settings', JSON.stringify(settings));
-        setSaveMessage('Settings saved successfully!');
-        setTimeout(() => setSaveMessage(''), 3000);
+
+        try {
+            await updateSettings(settingsPayload);
+            setSaveMessage('Settings saved successfully to database!');
+            setTimeout(() => setSaveMessage(''), 3000);
+        } catch (err) {
+            alert('Failed to save settings: ' + (err.response?.data?.detail || 'Unknown error'));
+        }
     };
 
     const handleExportData = () => {
-        const userData = {
-            email: localStorage.getItem('email'),
-            settings: JSON.parse(localStorage.getItem('settings') || '{}'),
-            exportDate: new Date().toISOString()
-        };
-        const dataStr = JSON.stringify(userData, null, 2);
-        const dataBlob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(dataBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `ai-beauty-data-${Date.now()}.json`;
-        link.click();
-        URL.revokeObjectURL(url);
-        setSaveMessage('Data exported successfully!');
-        setTimeout(() => setSaveMessage(''), 3000);
+        let doc;
+        try {
+            doc = new jsPDF();
+            const timestamp = new Date().toLocaleString();
+
+            // PDF Styling & Header
+            doc.setFillColor(63, 81, 181); // Premium Indigo
+            doc.rect(0, 0, 210, 40, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(24);
+            doc.text('AI Beauty Consultant', 20, 25);
+            doc.setFontSize(10);
+            doc.text('Your Personalized Beauty Profile & Settings', 20, 32);
+
+            doc.setTextColor(100, 100, 100);
+            doc.setFontSize(9);
+            doc.text(`Exported on: ${timestamp}`, 140, 50);
+            doc.text(`User Account: ${email}`, 20, 50);
+
+            // Safe Array Handling
+            const safeConcerns = Array.isArray(skinConcerns) ? skinConcerns.join(', ') : 'None';
+            const safeGoals = Array.isArray(skinGoals) ? skinGoals.join(', ') : 'None';
+
+            const sections = [
+                {
+                    title: 'Profile Information', data: [
+                        ['Age Range', ageRange || 'N/A'],
+                        ['Gender', gender || 'N/A'],
+                        ['Skin Type', skinType || 'N/A'],
+                        ['Budget', budgetPreference || 'N/A'],
+                        ['Concerns', safeConcerns || 'None']
+                    ]
+                },
+                {
+                    title: 'Goal Analysis', data: [
+                        ['Target Goals', safeGoals || 'None'],
+                        ['Timeline', targetTimeline || 'N/A'],
+                        ['Reminders', goalReminders ? 'Enabled' : 'Disabled']
+                    ]
+                },
+                {
+                    title: 'AI & Camera Preferences', data: [
+                        ['Model Version', modelVersion || 'N/A'],
+                        ['Analysis Speed', analysisSpeed || 'N/A'],
+                        ['Confidence Threshold', `${confidenceThreshold || 70}%`],
+                        ['Default Camera', defaultCamera || 'N/A'],
+                        ['Image Quality', imageQuality || 'N/A']
+                    ]
+                }
+            ];
+
+            let yPos = 60;
+            sections.forEach(section => {
+                doc.setTextColor(63, 81, 181);
+                doc.setFontSize(14);
+                doc.text(section.title, 20, yPos);
+
+                autoTable(doc, {
+                    startY: yPos + 5,
+                    head: [['Setting', 'Value']],
+                    body: section.data,
+                    theme: 'striped',
+                    headStyles: { fillColor: [63, 81, 181] },
+                    margin: { left: 20, right: 20 }
+                });
+                yPos = doc.lastAutoTable.finalY + 15;
+            });
+
+            doc.save(`AI_Beauty_Settings_${Date.now()}.pdf`);
+            setSaveMessage('PDF Exported successfully!');
+        } catch (err) {
+            console.error("PDF Export failed:", err);
+            alert("Error generating PDF. Please ensure all settings are loaded and try again.");
+        }
     };
 
-    const handlePasswordChange = () => {
+    const handlePasswordChange = async () => {
         if (newPassword !== confirmPassword) {
             alert('Passwords do not match!');
             return;
         }
-        if (newPassword.length < 8) {
-            alert('Password must be at least 8 characters!');
-            return;
+        try {
+            await changePassword({
+                current_password: currentPassword,
+                new_password: newPassword,
+                confirm_password: confirmPassword
+            });
+            setShowPasswordModal(false);
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+            setSaveMessage('Password changed successfully!');
+            setTimeout(() => setSaveMessage(''), 3000);
+        } catch (err) {
+            alert('Password change failed: ' + (err.response?.data?.detail || 'Check password strength'));
         }
-        setShowPasswordModal(false);
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        setSaveMessage('Password changed successfully!');
-        setTimeout(() => setSaveMessage(''), 3000);
     };
 
-    const handleEnable2FA = () => {
-        setShow2FAModal(false);
-        setSaveMessage('Two-Factor Authentication enabled!');
-        setTimeout(() => setSaveMessage(''), 3000);
+    const handleEnable2FA = async () => {
+        try {
+            const data = await enable2FA();
+            setQrCode(data.qr_code);
+            setTwoFASecret(data.secret);
+            setBackupCodes(data.backup_codes);
+            setTwoFAStep('setup');
+        } catch (err) {
+            alert('Failed to initiate 2FA: ' + (err.response?.data?.detail || 'Unknown error'));
+        }
     };
 
-    const handleDeleteAccount = () => {
-        const confirmed = window.confirm('Are you ABSOLUTELY sure? This cannot be undone!');
+    const handleVerify2FA = async () => {
+        try {
+            await verify2FA(verificationCode);
+            setTwoFAEnabled(true);
+            setTwoFAStep('initial');
+            setShow2FAModal(false);
+            setSaveMessage('Two-Factor Authentication activated successfully!');
+            setTimeout(() => setSaveMessage(''), 3000);
+        } catch (err) {
+            alert('Verification failed: ' + (err.response?.data?.detail || 'Invalid code'));
+        }
+    };
+
+    const handleDisable2FA = async () => {
+        if (!window.confirm('Are you sure you want to disable 2FA? This will make your account less secure.')) return;
+
+        const code = prompt('Please enter your 2FA code to confirm:');
+        if (!code) return;
+
+        try {
+            await disable2FA(code);
+            setTwoFAEnabled(false);
+            setSaveMessage('Two-Factor Authentication disabled.');
+            setTimeout(() => setSaveMessage(''), 3000);
+        } catch (err) {
+            alert('Failed to disable 2FA: ' + (err.response?.data?.detail || 'Invalid code'));
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        const confirmed = window.confirm('Permanently delete all data?');
         if (confirmed) {
-            localStorage.clear();
-            window.location.href = '/login';
+            try {
+                await deleteAccount();
+                localStorage.clear();
+                window.location.href = '/login';
+            } catch (err) {
+                alert('Deletion failed');
+            }
         }
-        setShowDeleteModal(false);
+    };
+
+    const handleCancelSubscription = async () => {
+        if (!window.confirm('Are you sure you want to cancel your Premium subscription? You will lose access to unlimited analysis and AI tips.')) return;
+
+        try {
+            await cancelSubscription();
+            setIsPremium(false);
+            setSaveMessage('Subscription cancelled. You are now on the Free plan.');
+            setTimeout(() => setSaveMessage(''), 3000);
+        } catch (err) {
+            alert('Failed to cancel subscription.');
+        }
     };
 
     const toggleSkinConcern = (concern) => {
@@ -199,6 +422,15 @@ const SettingsPage = () => {
         </div>
     );
 
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+                <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-gray-500 font-medium animate-pulse">Loading settings from database...</p>
+            </div>
+        );
+    }
+
     return (
         <div className="max-w-7xl mx-auto px-4">
             {/* Header with Gradient */}
@@ -230,8 +462,8 @@ const SettingsPage = () => {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center gap-2.5 px-5 py-3.5 rounded-xl font-semibold transition-all duration-300 ${activeTab === tab.id
-                                    ? `bg-gradient-to-r ${tab.color} text-white shadow-lg transform scale-105`
-                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                ? `bg-gradient-to-r ${tab.color} text-white shadow-lg transform scale-105`
+                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                 }`}
                         >
                             <tab.icon className="text-lg" />
@@ -360,8 +592,8 @@ const SettingsPage = () => {
                                             key={concern}
                                             onClick={() => toggleSkinConcern(concern)}
                                             className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 ${skinConcerns.includes(concern)
-                                                    ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg'
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                                 }`}
                                         >
                                             {concern.charAt(0).toUpperCase() + concern.slice(1).replace('-', ' ')}
@@ -450,8 +682,8 @@ const SettingsPage = () => {
                                             key={goal}
                                             onClick={() => toggleSkinGoal(goal)}
                                             className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 ${skinGoals.includes(goal)
-                                                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                                 }`}
                                         >
                                             {goal.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
@@ -501,8 +733,8 @@ const SettingsPage = () => {
                                         key={pref}
                                         onClick={() => toggleIngredientPref(pref)}
                                         className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 ${ingredientPrefs.includes(pref)
-                                                ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                            ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                             }`}
                                     >
                                         {pref.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
@@ -787,6 +1019,69 @@ const SettingsPage = () => {
                     </div>
                 )}
 
+                {/* MY PLAN TAB */}
+                {activeTab === 'plan' && (
+                    <div className="max-w-2xl mx-auto animate-fade-in">
+                        <SettingCard icon={FaCreditCard} title="Subscription Management" gradient="from-amber-500 to-yellow-600">
+                            <div className="text-center py-6">
+                                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold mb-6 ${isPremium ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-gray-100 text-gray-600'
+                                    }`}>
+                                    {isPremium ? <><FaCrown className="text-amber-500" /> Premium Member</> : 'Free Plan'}
+                                </div>
+
+                                <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                                    {isPremium ? 'You have full access!' : 'Unlock Premium Access'}
+                                </h3>
+                                <p className="text-gray-500 mb-8 max-w-md mx-auto">
+                                    {isPremium
+                                        ? `Your subscription is active until ${subEndDate ? new Date(subEndDate).toLocaleDateString() : 'N/A'}. Enjoy unlimited beauty analysis and priority AI tips.`
+                                        : 'Upgrade to get unlimited face analysis, personalized skincare routines, and exclusive AI-powered beauty insights.'}
+                                </p>
+
+                                <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 mb-8 text-left">
+                                    <h4 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                                        <FaCheck className="text-green-500" /> Included Features
+                                    </h4>
+                                    <ul className="space-y-3">
+                                        <li className="flex items-center gap-3 text-sm text-gray-600 font-medium">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                                            Unlimited Real-time Analysis
+                                        </li>
+                                        <li className="flex items-center gap-3 text-sm text-gray-600 font-medium">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                                            Deep Skin Health Insights
+                                        </li>
+                                        <li className="flex items-center gap-3 text-sm text-gray-600 font-medium">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                                            Exportable PDF Reports
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                {isPremium ? (
+                                    <div className="space-y-4">
+                                        <button
+                                            onClick={handleCancelSubscription}
+                                            className="w-full py-4 bg-white border-2 border-red-100 text-red-600 font-bold rounded-2xl hover:bg-red-50 hover:border-red-200 transition-all flex items-center justify-center gap-2 shadow-sm"
+                                        >
+                                            <FaTimes /> Cancel Subscription
+                                        </button>
+                                        <p className="text-xs text-gray-400">
+                                            If you cancel, you will maintain access until the end of your billing cycle.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => window.location.href = '/premium'}
+                                        className="w-full py-4 bg-gradient-to-r from-amber-500 to-yellow-600 text-white font-bold rounded-2xl hover:shadow-lg transform hover:-translate-y-1 transition-all"
+                                    >
+                                        Upgrade Now
+                                    </button>
+                                )}
+                            </div>
+                        </SettingCard>
+                    </div>
+                )}
             </div>
 
             {/* Floating Save Button */}
@@ -835,23 +1130,98 @@ const SettingsPage = () => {
                                 <h3 className="text-2xl font-bold flex items-center gap-3">
                                     <FaShieldAlt /> Two-Factor Authentication
                                 </h3>
-                                <button onClick={() => setShow2FAModal(false)} className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-all">
+                                <button onClick={() => { setShow2FAModal(false); setTwoFAStep('initial'); }} className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-all">
                                     <FaTimes className="text-xl" />
                                 </button>
                             </div>
                         </div>
                         <div className="p-6">
-                            <p className="text-gray-600 mb-4 leading-relaxed">Add an extra layer of security to your account with two-factor authentication using an authenticator app.</p>
-                            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
-                                <p className="text-sm text-blue-800 flex items-start gap-2">
-                                    <span className="text-xl">📱</span>
-                                    <span><strong>Note:</strong> You'll need Google Authenticator or Authy to use this feature.</span>
-                                </p>
-                            </div>
-                            <div className="flex gap-3">
-                                <button onClick={() => setShow2FAModal(false)} className="flex-1 px-6 py-3.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all">Cancel</button>
-                                <button onClick={handleEnable2FA} className="flex-1 px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg">Enable 2FA</button>
-                            </div>
+                            {twoFAStep === 'initial' && (
+                                <>
+                                    <p className="text-gray-600 mb-4 leading-relaxed">
+                                        {twoFAEnabled
+                                            ? "Two-factor authentication is currently enabled for your account. This adds an extra layer of security when you log in."
+                                            : "Add an extra layer of security to your account with two-factor authentication using an authenticator app."}
+                                    </p>
+                                    <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
+                                        <p className="text-sm text-blue-800 flex items-start gap-2">
+                                            <span className="text-xl">📱</span>
+                                            <span><strong>Note:</strong> You'll need an app like Google Authenticator or Authy.</span>
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button onClick={() => setShow2FAModal(false)} className="flex-1 px-6 py-3.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all">Close</button>
+                                        {twoFAEnabled ? (
+                                            <button onClick={handleDisable2FA} className="flex-1 px-6 py-3.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all shadow-lg">Disable 2FA</button>
+                                        ) : (
+                                            <button onClick={handleEnable2FA} className="flex-1 px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg">Begin Setup</button>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+
+                            {twoFAStep === 'setup' && (
+                                <div className="text-center animate-fade-in">
+                                    <p className="text-sm text-gray-600 mb-4">Scan this QR code with your authenticator app:</p>
+                                    {qrCode && (
+                                        <div className="bg-white p-4 rounded-2xl border-2 border-gray-100 inline-block mb-4 shadow-inner">
+                                            <img src={qrCode} alt="2FA QR Code" className="w-48 h-48 mx-auto" />
+                                        </div>
+                                    )}
+                                    <div className="bg-gray-50 p-3 rounded-xl mb-6 text-left border border-gray-200">
+                                        <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">Manual Entry Secret:</p>
+                                        <code className="text-xs font-mono break-all text-blue-700 font-bold">{twoFASecret}</code>
+                                    </div>
+                                    <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 mb-6 text-left">
+                                        <p className="text-[10px] uppercase font-bold text-yellow-700 mb-2">Emergency Backup Codes:</p>
+                                        <div className="grid grid-cols-2 gap-1 mb-2">
+                                            {backupCodes.slice(0, 4).map((code, i) => (
+                                                <code key={i} className="text-[10px] font-mono text-gray-600">{code}</code>
+                                            ))}
+                                        </div>
+                                        <p className="text-[9px] text-yellow-600 font-medium">⚠️ Save these codes! They are the only way to recover your account if you lose your phone.</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setTwoFAStep('verify')}
+                                        className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg"
+                                    >
+                                        I've scanned it, continue
+                                    </button>
+                                </div>
+                            )}
+
+                            {twoFAStep === 'verify' && (
+                                <div className="text-center animate-fade-in">
+                                    <div className="bg-blue-500 w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-white text-3xl mb-4 shadow-lg">
+                                        <FaKey />
+                                    </div>
+                                    <h4 className="text-xl font-bold text-gray-800 mb-2">Enter Verification Code</h4>
+                                    <p className="text-sm text-gray-500 mb-6">Enter the 6-digit code from your app to confirm setup.</p>
+
+                                    <input
+                                        type="text"
+                                        maxLength="6"
+                                        placeholder="000000"
+                                        value={verificationCode}
+                                        onChange={(e) => setVerificationCode(e.target.value)}
+                                        className="w-full text-center text-3xl tracking-[1rem] py-4 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-mono mb-6"
+                                    />
+
+                                    <div className="flex gap-3">
+                                        <button onClick={() => setTwoFAStep('setup')} className="flex-1 px-6 py-3.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all">Back</button>
+                                        <button
+                                            onClick={handleVerify2FA}
+                                            disabled={verificationCode.length !== 6}
+                                            className={`flex-1 px-6 py-3.5 font-bold rounded-xl transition-all shadow-lg ${verificationCode.length === 6
+                                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700'
+                                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                }`}
+                                        >
+                                            Complete Activation
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

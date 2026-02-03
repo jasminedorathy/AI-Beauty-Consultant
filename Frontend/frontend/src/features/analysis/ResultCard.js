@@ -5,7 +5,7 @@ const ResultCard = ({ data, image, annotatedImage }) => {
 
   if (!data) return null;
 
-  const { faceShape, skinScores, recommendations, error, colorAnalysis, gender } = data;
+  const { faceShape, skinScores, recommendations, personalizedTips, error, colorAnalysis, gender } = data;
 
   if (error) {
     return (
@@ -234,6 +234,32 @@ const ResultCard = ({ data, image, annotatedImage }) => {
             </div>
           </div>
         </div>
+
+        {/* Personalized Tips Section - Full Width */}
+        {personalizedTips && personalizedTips.length > 0 && (
+          <div className="mt-8 bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 rounded-2xl p-6 border border-purple-200">
+            <h3 className="text-xl font-bold text-gray-800 mb-5 flex items-center">
+              <span className="mr-2">💡</span> Your Personalized Beauty Tips
+              <span className="ml-3 text-xs font-normal bg-purple-100 text-purple-700 px-3 py-1 rounded-full">AI-Generated Just For You</span>
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {personalizedTips.map((tip, i) => (
+                <div
+                  key={i}
+                  className="flex items-start bg-white rounded-xl p-4 shadow-sm border border-purple-100 hover:shadow-md hover:border-purple-300 transition-all duration-200"
+                >
+                  <span className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center text-xl mr-3 shadow-sm">
+                    {tip.match(/^[\u{1F300}-\u{1F9FF}]/u)?.[0] || "✨"}
+                  </span>
+                  <span className="text-gray-700 font-medium leading-relaxed text-sm pt-2">
+                    {tip.replace(/^[\u{1F300}-\u{1F9FF}]\s*/u, '')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

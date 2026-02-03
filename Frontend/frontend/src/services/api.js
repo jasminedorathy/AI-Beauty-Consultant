@@ -20,12 +20,12 @@ api.interceptors.request.use(
 
 // SIGNUP
 export const signup = (data) => {
-  return api.post("/auth/signup", data);
+  return api.post("/api/auth/signup", data);
 };
 
 // LOGIN
 export const login = (data) => {
-  return api.post("/auth/login", data);
+  return api.post("/api/auth/login", data);
 };
 
 // ANALYZE
@@ -43,6 +43,54 @@ export const getHistory = () => {
 // CHAT
 export const sendChat = async (message) => {
   const res = await api.post("/chat", { message });
+  return res.data;
+};
+
+// SETTINGS
+export const getSettings = async () => {
+  const res = await api.get("/api/settings/");
+  return res.data;
+};
+
+export const updateSettings = async (settings) => {
+  const res = await api.post("/api/settings/", settings);
+  return res.data;
+};
+
+export const resetSettings = async () => {
+  const res = await api.delete("/api/settings/");
+  return res.data;
+};
+
+// SECURITY
+export const changePassword = async (passwordData) => {
+  const res = await api.post("/api/auth/change-password", passwordData);
+  return res.data;
+};
+
+export const deleteAccount = async () => {
+  const res = await api.delete("/api/auth/delete-account");
+  return res.data;
+};
+
+// 2FA
+export const enable2FA = async () => {
+  const res = await api.post("/api/auth/2fa/enable");
+  return res.data;
+};
+
+export const verify2FA = async (code) => {
+  const res = await api.post("/api/auth/2fa/verify", { code });
+  return res.data;
+};
+
+export const disable2FA = async (code) => {
+  const res = await api.post("/api/auth/2fa/disable", { code });
+  return res.data;
+};
+
+export const get2FAStatus = async () => {
+  const res = await api.get("/api/auth/2fa/status");
   return res.data;
 };
 

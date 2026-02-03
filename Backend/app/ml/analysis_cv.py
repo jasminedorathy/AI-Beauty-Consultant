@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import math
 import os
+from app.ml.face_shape_predictor import get_face_shape_predictor
 
 # Try to load DenseNet-201 for Skin Analysis (97% accuracy target)
 # Try to load DenseNet-201 for Skin Analysis (97% accuracy target)
@@ -95,11 +96,53 @@ def extract_skin_mask_hsv(image):
 
 # --- 1. FACE SHAPE ANALYSIS (VECTOR SIMILARITY + ANGLE) ---
 
-def calculate_face_shape(landmarks, width, height):
+def calculate_face_shape(landmarks, width, height, image=None):
     """
-    Improved face shape classification using refined geometric analysis.
-    Uses multiple measurements and research-based centroids for higher accuracy.
+    Hybrid face shape classification:
+    1. Uses EfficientNetV2S CNN if image is provided.
+    2. Falls back to Geometric fallback if CNN is uncertain or image is missing.
     """
+    # Initialize predictor
+    predictor = get_face_shape_predictor()
+    
+    cnn_shape = None
+    cnn_conf = 0.0
+
+    # 1. TRY CNN PREDICTION
+    if image is not None and predictor.model is not None:
+        try:
+            # Crop face for CNN
+            xs = [lm.x for lm in landmarks]
+            ys = [lm.y for lm in landmarks]
+            
+            x1 = int(min(xs) * width)
+            y1 = int(min(ys) * height)
+            x2 = int(max(xs) * width)
+            y2 = int(max(ys) * height)
+            
+            # Add padding for context
+            pad_x = int((x2 - x1) * 0.2)
+            pad_y = int((y2 - y1) * 0.2)
+            
+            img_h, img_w = image.shape[:2]
+            x1 = max(0, x1 - pad_x)
+            y1 = max(0, y1 - pad_y)
+            x2 = min(img_w, x2 + pad_x)
+            y2 = min(img_h, y2 + pad_y)
+            
+            face_crop = image[y1:y2, x1:x2]
+            
+            if face_crop.size > 0:
+                cnn_shape, cnn_conf = predictor.predict(face_crop)
+                print(f"🧬 CNN FACE SHAPE: {cnn_shape} ({cnn_conf*100:.1f}%)")
+                
+                # If CNN is highly confident, return immediately
+                if cnn_conf > 0.85:
+                    return cnn_shape, cnn_conf
+        except Exception as e:
+            print(f"⚠️ CNN Prediction Failed: {e}")
+
+    # 2. GEOMETRIC FALLBACK / SUPPLEMENT
     def get_coords(idx):
         return (landmarks[idx].x * width, landmarks[idx].y * height)
 
@@ -107,104 +150,68 @@ def calculate_face_shape(landmarks, width, height):
         return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
 
     def calculate_angle(a, b, c):
-        """Calculates angle ABC (in degrees)"""
         ba = np.array([a[0]-b[0], a[1]-b[1]])
         bc = np.array([c[0]-b[0], c[1]-b[1]])
         cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc) + 1e-6)
         return np.degrees(np.arccos(np.clip(cosine_angle, -1.0, 1.0)))
 
-    # IMPROVED LANDMARK SELECTION
-    # Using more accurate landmark points for measurements
-    
-    # Jaw width: Use actual jaw corners (not too low)
-    jaw_left = get_coords(172)   # Left jaw
-    jaw_right = get_coords(397)  # Right jaw
-    jaw_width = dist(jaw_left, jaw_right)
-    
-    # Cheekbone width: Widest part of face (temples)
-    cheek_left = get_coords(234)   # Left cheekbone
-    cheek_right = get_coords(454)  # Right cheekbone
-    cheek_width = dist(cheek_left, cheek_right)
-    
-    # Forehead width: Between temples
-    forehead_left = get_coords(103)   # Left temple
-    forehead_right = get_coords(332)  # Right temple
-    forehead_width = dist(forehead_left, forehead_right)
-    
-    # Face length: Top of forehead to bottom of chin
-    face_top = get_coords(10)     # Top of forehead
-    face_bottom = get_coords(152) # Bottom of chin
-    face_height = dist(face_top, face_bottom)
-    
-    # Mid-face width (between eyes, for additional feature)
+    # Measurements
+    jaw_width = dist(get_coords(172), get_coords(397))
+    cheek_width = dist(get_coords(234), get_coords(454))
+    forehead_width = dist(get_coords(103), get_coords(332))
+    face_height = dist(get_coords(10), get_coords(152))
     mid_face_width = dist(get_coords(130), get_coords(359))
-    
-    # Jaw angle: Critical for distinguishing Square vs Round
-    # Using 3 points: ear -> jaw corner -> chin
     jaw_angle = calculate_angle(get_coords(127), get_coords(172), get_coords(152))
     
-    # Prevent division by zero
     if cheek_width == 0: cheek_width = 1
     if face_height == 0: face_height = 1
 
-    # FEATURE VECTOR CALCULATION
-    # 5 features for better discrimination
-    length_to_width = face_height / cheek_width  # Overall proportion
-    jaw_to_cheek = jaw_width / cheek_width       # Jaw narrowness
-    forehead_to_cheek = forehead_width / cheek_width  # Forehead width
-    angle_norm = jaw_angle / 140.0               # Jaw sharpness (normalized)
-    mid_to_cheek = mid_face_width / cheek_width  # Mid-face proportion
+    length_to_width = face_height / cheek_width
+    jaw_to_cheek = jaw_width / cheek_width
+    forehead_to_cheek = forehead_width / cheek_width
+    angle_norm = jaw_angle / 140.0
+    mid_to_cheek = mid_face_width / cheek_width
 
     user_vector = np.array([length_to_width, jaw_to_cheek, forehead_to_cheek, angle_norm, mid_to_cheek])
 
-    # REFINED CENTROIDS based on facial proportion research
-    # [L/W, J/C, F/C, Angle/140, Mid/C]
     shapes_centroids = {
-        "Oval":     np.array([1.50, 0.78, 0.88, 0.93, 0.65]),  # Balanced, soft jaw, classic proportions
-        "Round":    np.array([1.10, 0.95, 0.92, 1.05, 0.70]),  # Short, wide jaw, wide angle
-        "Square":   np.array([1.20, 0.98, 0.95, 0.75, 0.68]),  # Angular jaw, sharp angle ~105°
-        "Heart":    np.array([1.35, 0.68, 1.00, 0.90, 0.62]),  # Wide forehead, narrow jaw
-        "Long":     np.array([1.70, 0.82, 0.85, 0.92, 0.63]),  # Elongated face
-        "Diamond":  np.array([1.45, 0.65, 0.75, 0.88, 0.60])   # Narrow forehead & jaw, wide cheeks
+        "Oval":      np.array([1.50, 0.78, 0.88, 0.93, 0.65]),
+        "Round":     np.array([1.10, 0.95, 0.92, 1.05, 0.70]),
+        "Square":    np.array([1.20, 0.98, 0.95, 0.75, 0.68]),
+        "Heart":     np.array([1.35, 0.68, 1.00, 0.90, 0.62]),
+        "Long":      np.array([1.70, 0.82, 0.85, 0.92, 0.63]),
+        "Diamond":   np.array([1.45, 0.65, 0.75, 0.88, 0.60]),
+        "Pear":      np.array([1.25, 1.05, 0.80, 1.10, 0.72]),
+        "Rectangle": np.array([1.65, 0.98, 0.95, 0.75, 0.68]),
+        "Triangle":  np.array([1.30, 1.10, 0.75, 1.15, 0.75])
     }
 
-    print(f"📐 MEASUREMENTS:")
-    print(f"   Face H/W: {length_to_width:.2f}, Jaw/Cheek: {jaw_to_cheek:.2f}")
-    print(f"   Forehead/Cheek: {forehead_to_cheek:.2f}, Jaw Angle: {jaw_angle:.1f}°")
-    print(f"   Mid/Cheek: {mid_to_cheek:.2f}")
-
-    # WEIGHTED DISTANCE CALCULATION
-    # Weights prioritize most discriminative features
-    # Length/Width: 1.5 (important for Long vs Round)
-    # Jaw/Cheek: 2.0 (critical for Heart/Diamond vs others)
-    # Forehead/Cheek: 1.5 (important for Heart shape)
-    # Angle: 2.5 (most critical for Square vs Round distinction)
-    # Mid/Cheek: 1.0 (supplementary feature)
     weights = np.array([1.5, 2.0, 1.5, 2.5, 1.0])
+    dists = {shape: np.sqrt(np.sum(weights * (user_vector - centroid)**2)) for shape, centroid in shapes_centroids.items()}
     
-    dists = {}
-    for shape, centroid in shapes_centroids.items():
-        d = np.sqrt(np.sum(weights * (user_vector - centroid)**2))
-        dists[shape] = d
-        print(f"   {shape}: distance = {d:.3f}")
-    
-    # Find best match
-    best_shape = min(dists, key=dists.get)
-    min_dist = dists[best_shape]
-    
-    # Calculate confidence: inverse of normalized distance
-    # Lower distance = higher confidence
-    max_reasonable_dist = 1.5  # Empirically determined
-    confidence = max(0.0, min(1.0, 1.0 - (min_dist / max_reasonable_dist)))
-    
-    # Apply confidence threshold - if too uncertain, default to Oval
-    if confidence < 0.3:
-        print(f"   ⚠️ Low confidence ({confidence*100:.1f}%), defaulting to Oval")
-        best_shape = "Oval"
-        confidence = 0.5
+    geo_shape = min(dists, key=dists.get)
+    geo_conf = max(0.0, min(1.0, 1.0 - (dists[geo_shape] / 1.5)))
 
-    print(f"   ✅ RESULT: {best_shape} (Confidence: {confidence*100:.1f}%)")
-    return best_shape, confidence
+    # HYBRID DECISION
+    if cnn_shape:
+        # If CNN and Geometry agree, boost confidence
+        if cnn_shape == geo_shape:
+            final_shape = cnn_shape
+            final_conf = min(0.98, cnn_conf + 0.1)
+        # If they disagree, but CNN is somewhat confident, lean towards CNN but lower score
+        elif cnn_conf > 0.6:
+            final_shape = cnn_shape
+            final_conf = cnn_conf * 0.9
+        else:
+            # Low CNN confidence and disagreement, trust Geometry more
+            final_shape = geo_shape
+            final_conf = max(geo_conf, cnn_conf)
+    else:
+        final_shape = geo_shape
+        final_conf = geo_conf
+
+    print(f"✅ FINAL RESULT: {final_shape} (Confidence: {final_conf*100:.1f}%)")
+    return final_shape, final_conf
 
 # --- 2. GENDER ANALYSIS (CNN MODEL) ---
 
@@ -314,91 +321,110 @@ def classify_gender_geometric(landmarks, width, height, image=None):
 
 def _gender_fallback_analysis(landmarks, width, height, image=None):
     """
-    Fallback gender detection using facial geometry and hair analysis.
-    More reliable for edge cases.
+    Advanced Biometric Gender Detection (Professional Grade).
+    Uses a hybrid approach identifying:
+    1. Shadow Analysis (Stubble/Beard detection via Retinex)
+    2. fWHR (Facial Width-to-Height Ratio) 
+    3. Brow Position (Distance from eyes)
+    4. Hair Density
     """
     try:
-        # Method 1: Jaw width to face height ratio
-        # Males typically have wider jaws relative to face height
-        
-        # Get key landmark points
-        chin = landmarks[152]  # Chin point
-        left_cheek = landmarks[234]  # Left cheek
-        right_cheek = landmarks[454]  # Right cheek
-        forehead = landmarks[10]  # Forehead
-        
-        # Calculate jaw width
-        jaw_width = abs(right_cheek.x - left_cheek.x) * width
-        
-        # Calculate face height
-        face_height = abs(chin.y - forehead.y) * height
-        
-        # Jaw to height ratio
-        jaw_ratio = jaw_width / face_height if face_height > 0 else 0
-        
-        # Method 2: Eyebrow to eye distance
-        # Females typically have higher eyebrows relative to eyes
-        left_eyebrow = landmarks[70]  # Left eyebrow
-        left_eye = landmarks[159]  # Left eye
-        
-        eyebrow_distance = abs(left_eyebrow.y - left_eye.y) * height
-        
-        # Method 3: Hair length detection (if image available)
-        hair_score = 0
+        # Pre-process image for shadow analysis
+        processed_img = None
         if image is not None:
-            # Check for long hair by analyzing pixels above forehead
-            img_h, img_w = image.shape[:2]
-            forehead_y = int(forehead.y * height)
+            # Re-apply Retinex to normalize lighting for shadow detection
+            processed_img = apply_retinex(image)
             
-            # Sample region above head
-            if forehead_y > 50:
-                hair_region = image[max(0, forehead_y - 50):forehead_y, :]
+        # --- 1. fWHR (Facial Width-to-Height Ratio) ---
+        # Males typically have higher fWHR (> 1.9)
+        # Ratio of bizygomatic width (cheeks) to upper face height (eyebrows to upper lip)
+        left_cheek = landmarks[234] 
+        right_cheek = landmarks[454]
+        upper_lip = landmarks[0]
+        eyebrows_mid = landmarks[8]
+        
+        face_width = math.sqrt((right_cheek.x - left_cheek.x)**2 + (right_cheek.y - left_cheek.y)**2) * width
+        upper_face_height = math.sqrt((eyebrows_mid.x - upper_lip.x)**2 + (eyebrows_mid.y - upper_lip.y)**2) * height
+        
+        fwhr = face_width / upper_face_height if upper_face_height > 0 else 0
+        
+        # --- 2. Brow Position ---
+        # Females typically have higher eyebrows relative to the eye
+        left_eye = landmarks[159]
+        left_brow = landmarks[70]
+        brow_dist = abs(left_brow.y - left_eye.y) * height
+        
+        # --- 3. Shadow Analysis (Stubble/Beard Detector) ---
+        shadow_score = 0
+        if processed_img is not None:
+            # Reference zone: Forehead (usually clean skin for both)
+            fx = int(landmarks[10].x * width)
+            fy = int(landmarks[10].y * height)
+            
+            # Target zone: Chin/Lower Jaw (where shadows/stubble appear)
+            cx = int(landmarks[152].x * width)
+            cy = int(landmarks[152].y * height)
+            
+            # Check image boundaries before cropping
+            img_h, img_w = processed_img.shape[:2]
+            if 20 < fy < img_h-20 and 20 < cy < img_h-20:
+                forehead_patch = processed_img[fy-15:fy+15, fx-15:fx+15]
+                chin_patch = processed_img[cy-25:cy+5, cx-25:cx+25]
                 
-                # Long hair typically has more variation in color
-                if hair_region.size > 0:
-                    hair_std = np.std(hair_region)
-                    hair_score = 1 if hair_std > 30 else 0  # Higher variation = likely long hair
+                if forehead_patch.size > 0 and chin_patch.size > 0:
+                    f_gray = cv2.cvtColor(forehead_patch, cv2.COLOR_BGR2GRAY)
+                    c_gray = cv2.cvtColor(chin_patch, cv2.COLOR_BGR2GRAY)
+                    
+                    f_bright = np.mean(f_gray)
+                    c_bright = np.mean(c_gray)
+                    
+                    # If chin area is significantly darker even after Retinex, it's a Shadow/Stubble signal
+                    if c_bright < f_bright * 0.83:
+                        shadow_score = 3 # Strong Male signal
+                    elif c_bright < f_bright * 0.90:
+                        shadow_score = 1.5 # Probable Male signal
+                        
+        # --- 4. Hair Coverage ---
+        hair_signal = 0
+        if image is not None:
+            top_y = int(landmarks[10].y * height)
+            if top_y > 50:
+                top_patch = image[0:top_y, :]
+                if top_patch.size > 0:
+                    std = np.std(top_patch)
+                    # Higher variation (texture) in the top area usually indicates long hair or volume
+                    if std > 40: hair_signal = 1
         
-        # Scoring system
-        male_score = 0
-        female_score = 0
+        # --- FINAL BIOMETRIC SCORING ---
+        male_voter = 0
+        female_voter = 0
         
-        # Jaw ratio scoring (males typically > 0.75, females < 0.70)
-        if jaw_ratio > 0.75:
-            male_score += 2
-        elif jaw_ratio < 0.70:
-            female_score += 2
-        else:
-            # Neutral zone
-            pass
+        # Score fWHR (Research based thresholds)
+        if fwhr > 1.95: 
+            male_voter += 2
+        elif fwhr < 1.70: 
+            female_voter += 1
+            
+        # Score Brow Distance
+        if brow_dist > 18:
+            female_voter += 2
+        elif brow_dist < 11:
+            male_voter += 1
+            
+        # Score Shadows (The most powerful Male signal)
+        male_voter += shadow_score
         
-        # Eyebrow distance scoring (females typically have more distance)
-        if eyebrow_distance > 15:
-            female_score += 1
-        elif eyebrow_distance < 10:
-            male_score += 1
+        # Score Hair signal
+        female_voter += hair_signal
         
-        # Hair length scoring
-        female_score += hair_score
+        result = "Male" if male_voter > female_voter else "Female"
         
-        # Final decision
-        if female_score > male_score:
-            result = "Female"
-        elif male_score > female_score:
-            result = "Male"
-        else:
-            # Default to Female if tie (conservative approach for beauty app)
-            result = "Female"
-        
-        print(f"🔍 FALLBACK GENDER: {result} (Jaw:{jaw_ratio:.2f}, Brow:{eyebrow_distance:.1f}px, Hair:{hair_score})")
+        print(f"🧬 BIOMETRIC GENDER: {result} [M:{male_voter} F:{female_voter}] (fWHR:{fwhr:.2f}, Brow:{brow_dist:.1f}, Shadow:{shadow_score})")
         return result
         
     except Exception as e:
-        print(f"⚠️ Fallback gender analysis failed: {e}")
-        # Ultimate fallback - default to Female for beauty consultation
-        return "Female"
-
-    return "Female" # Default fallback safety
+        print(f"⚠️ Biometric Gender Analysis Failed: {e}")
+        return "Female" # Default safety fallback
 
 # --- 3. SKIN ANALYSIS (HYBRID: CNN + K-MEANS) ---
 

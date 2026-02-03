@@ -33,8 +33,8 @@ MODEL_SAVE_PATH = "models/face_shape_efficientnetv2s.pth"
 BATCH_SIZE = 16 
 NUM_EPOCHS = 30 # Adjust as needed
 LEARNING_RATE = 0.001
-NUM_CLASSES = 5
-CLASSES = ["Heart", "Oblong", "Oval", "Round", "Square"]
+NUM_CLASSES = 8
+CLASSES = ["Diamond", "Heart", "Long", "Oval", "Pear", "Round", "Square", "Triangle"]
 IMG_SIZE = 224 # EfficientNet standard input
 
 def train_model(model, dataloaders, dataset_sizes, criterion, optimizer, scheduler, num_epochs=25):

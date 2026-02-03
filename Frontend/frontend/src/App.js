@@ -17,6 +17,7 @@ import HairStyling from "./features/styling/HairStyling";
 import NailStyling from "./features/styling/NailStyling";
 import ServicesPage from "./features/services/ServicesPage";
 import SettingsPage from "./pages/SettingsPage";
+import PremiumPage from "./pages/PremiumPage";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import DashboardLayout from "./layout/DashboardLayout";
@@ -34,6 +35,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/demo-results" element={<DemoResultsPage />} />
+          <Route path="/premium" element={<ProtectedRoute><PremiumPage /></ProtectedRoute>} />
 
           {/* Protected Dashboard Routes */}
           <Route

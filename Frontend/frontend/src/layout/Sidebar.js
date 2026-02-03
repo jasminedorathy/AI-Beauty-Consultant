@@ -102,7 +102,7 @@ const Sidebar = () => {
           <NavItem to="/dashboard/analyze" icon={<FaMagic />} label="Face Analysis" />
         </div>
         <div className="animate-fade-in-up animation-delay-400">
-          <NavItem to="/dashboard/live" icon={<FaCamera />} label="Live Camera" />
+          <NavItem to="/dashboard/live-analyze" icon={<FaCamera />} label="Live Camera" />
         </div>
         <div className="animate-fade-in-up animation-delay-500">
           <NavItem to="/dashboard/services" icon={<FaSpa />} label="Spa Services" badge="HOT" />
@@ -112,10 +112,10 @@ const Sidebar = () => {
           Styling Studio
         </div>
         <div className="animate-fade-in-up animation-delay-700">
-          <NavItem to="/dashboard/hair" icon={<FaCut />} label="Hair Styling" badge="NEW" />
+          <NavItem to="/dashboard/hair-styling" icon={<FaCut />} label="Hair Styling" badge="NEW" />
         </div>
         <div className="animate-fade-in-up animation-delay-800">
-          <NavItem to="/dashboard/nails" icon={<FaPaintBrush />} label="Nail Studio" badge="NEW" />
+          <NavItem to="/dashboard/nail-styling" icon={<FaPaintBrush />} label="Nail Studio" badge="NEW" />
         </div>
 
         <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-4 mb-2 mt-6 animate-fade-in-up animation-delay-900">

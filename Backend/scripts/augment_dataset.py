@@ -24,7 +24,7 @@ AUGMENTED_DIR = "datasets/face_shape_augmented"
 AUGMENTATION_FACTOR = 5  # Create 5 variants per image
 
 # Face shape classes
-CLASSES = ["Heart", "Oblong", "Oval", "Round", "Square"]
+CLASSES = ["Diamond", "Heart", "Long", "Oval", "Pear", "Rectangle", "Round", "Square", "Triangle"]
 
 # Augmentation parameters
 ROTATION_RANGE = (-50, 30)  # degrees

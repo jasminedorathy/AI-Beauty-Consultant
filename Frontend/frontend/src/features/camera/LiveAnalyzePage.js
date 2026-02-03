@@ -21,32 +21,57 @@ const LiveAnalyzePage = () => {
 
     const setupLiveAnalysis = async () => {
       try {
-        // 1. Load MediaPipe FaceLandmarker
+        setLoading(true);
+        setError("Loading AI Model...");
         const vision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
         );
 
-        landmarkerRef.current = await FaceLandmarker.createFromOptions(vision, {
-          baseOptions: {
-            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
-            delegate: "GPU"
-          },
-          runningMode: "VIDEO",
-          numFaces: 1
-        });
+        try {
+          landmarkerRef.current = await FaceLandmarker.createFromOptions(vision, {
+            baseOptions: {
+              modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+              delegate: "GPU"
+            },
+            runningMode: "VIDEO",
+            numFaces: 1
+          });
+        } catch (gpuError) {
+          console.warn("GPU Delegate failed, falling back to CPU:", gpuError);
+          landmarkerRef.current = await FaceLandmarker.createFromOptions(vision, {
+            baseOptions: {
+              modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+              delegate: "CPU"
+            },
+            runningMode: "VIDEO",
+            numFaces: 1
+          });
+        }
 
         console.log("✅ FaceLandmarker loaded");
+        setError("");
+        setLoading(false);
 
         // 2. Start Camera
-        stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: "user"
+          }
+        });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.addEventListener("loadeddata", predictWebcam);
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current.play();
+            predictWebcam();
+          };
         }
 
       } catch (err) {
         console.error("Setup error:", err);
-        setError("Failed to initialize camera or AI model.");
+        setError("Failed to initialize camera. Ensure you have given permissions.");
+        setLoading(false);
       }
     };
 
@@ -134,6 +159,7 @@ const LiveAnalyzePage = () => {
           skin_analysis: res.data.skin_analysis || {},
           colorAnalysis: res.data.color_analysis || {},
           recommendations: res.data.recommendations || [],
+          personalizedTips: res.data.personalized_tips || [],
           imageUrl: res.data.image_url,
           annotated_image_url: res.data.annotated_image_url,
           annotatedImageUrl: res.data.annotated_image_url

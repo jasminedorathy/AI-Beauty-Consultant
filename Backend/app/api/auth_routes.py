@@ -57,13 +57,14 @@
 
 
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from app.api.routes import get_current_user
 from app.mongodb.user_collection import user_collection
 from app.auth.security import hash_password, verify_password
 from app.auth.jwt_handler import create_access_token
 from app.auth.schemas import UserAuth
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
 
 @router.post("/signup")
@@ -116,4 +117,22 @@ def login(user: UserAuth):
         "token_type": "bearer"
     }
 
-
+@router.delete("/delete-account")
+def delete_account(current_user: dict = Depends(get_current_user)):
+    user_email = current_user.get("sub")
+    
+    # 1. Delete user settings
+    from app.mongodb.settings_collection import settings_collection
+    settings_collection.delete_one({"user_email": user_email})
+    
+    # 2. Delete user analysis history
+    from app.mongodb.collections import analysis_collection
+    analysis_collection.delete_many({"user_email": user_email})
+    
+    # 3. Delete user account
+    result = user_collection.delete_one({"email": user_email})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    return {"message": "Account and all associated data deleted successfully"}
