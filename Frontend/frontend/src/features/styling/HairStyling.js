@@ -11,7 +11,7 @@ const HAIR_ASSETS = {
         Male: [
             { style: "Modern Pompadour", desc: "Adds vertical height to perfectly balance your symmetric oval profile.", img: "/images/hairstyles/men_oval_quiff.png" },
             { style: "Textured Quiff", desc: "A versatile, effortless look that maintains natural facial balance.", img: "/images/hairstyles/men_oval_quiff.png" },
-            { style: "Side Swept Undercut", desc: "Sharp contrast that highlights your strong cheekbone structure.", img: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=800&q=80" },
+            { style: "Side Swept Undercut", desc: "Sharp contrast that highlights your strong cheekbone structure.", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=800&q=80" },
             { style: "Classic Slick Back", desc: "Sophisticated and sharp, mirroring your balanced proportions.", img: "https://images.unsplash.com/photo-1521146764736-56c929d59c83?auto=format&fit=crop&w=800&q=80" },
             { style: "Mid Fade Fringe", desc: "Softens the forehead while maintaining the oval's natural symmetry.", img: "https://images.unsplash.com/photo-1593702295094-ada75ec38835?auto=format&fit=crop&w=800&q=80" },
             { style: "Man Bun", desc: "A bold choice that showcases your balanced facial proportions.", img: "https://images.unsplash.com/photo-1550525811-e5869dd03032?auto=format&fit=crop&w=800&q=80" }
@@ -19,7 +19,7 @@ const HAIR_ASSETS = {
         Female: [
             { style: "Long Silk Layers", desc: "Adds movement without hiding your ideal face shape symmetry.", img: "https://images.unsplash.com/photo-1492106087820-71f1717878e2?auto=format&fit=crop&w=800&q=80" },
             { style: "Blunt Glass Bob", desc: "A clean, chin-length cut that emphasizes your elegant jawline.", img: "https://images.unsplash.com/photo-1605497788044-5a32c7078486?auto=format&fit=crop&w=800&q=80" },
-            { style: "Curtain Shag", desc: "Softly frames the face, creating a youthful and balanced appearance.", img: "https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=800&q=80" },
+            { style: "Curtain Shag", desc: "Softly frames the face, creating a youthful and balanced appearance.", img: "https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&w=800&q=80" },
             { style: "Boho Waves", desc: "Gentle volume that complements the smooth curves of your profile.", img: "https://images.unsplash.com/photo-1635273051937-6030999086e3?auto=format&fit=crop&w=800&q=80" },
             { style: "Sleek Ponytail", desc: "Highlights your forehead and jawline for a high-fashion look.", img: "https://images.unsplash.com/photo-1582095133179-bfd03e281907?auto=format&fit=crop&w=800&q=80" },
             { style: "Shoulder Length Cut", desc: "Classic versatility that suits almost any occasion.", img: "https://images.unsplash.com/photo-1574621100236-d25b64cfdd63?auto=format&fit=crop&w=800&q=80" }
@@ -28,11 +28,11 @@ const HAIR_ASSETS = {
     Square: {
         Male: [
             { style: "Faded Textured Crop", desc: "Softens the strong, angular lines of your masculine jaw.", img: "/images/hairstyles/men_square_crop.png" },
-            { style: "Side Part Taper", desc: "A professional look that aligns with your strong structural features.", img: "https://images.unsplash.com/photo-1616805763604-d610b4538491?auto=format&fit=crop&w=800&q=80" },
+            { style: "Side Part Taper", desc: "A professional look that aligns with your strong structural features.", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=800&q=80" },
             { style: "Buzz Cut Fade", desc: "Highlights your strong skull structure and masculine geometry.", img: "https://images.unsplash.com/photo-1595152452543-e5cca283f58c?auto=format&fit=crop&w=800&q=80" },
             { style: "Messy Spikes", desc: "Adds verticality to balance the horizontal width of your face.", img: "https://images.unsplash.com/photo-1583327129759-715ce920a232?auto=format&fit=crop&w=800&q=80" },
-            { style: "Ivy League", desc: "Sophisticated and clean, emphasizing a refined jawline.", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=800&q=80" },
-            { style: "Flat Top", desc: "Plays into the boxy, strong nature of your square face shape.", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=800&q=80" }
+            { style: "Ivy League", desc: "Sophisticated and clean, emphasizing a refined jawline.", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=800&q=80" },
+            { style: "Flat Top", desc: "Plays into the boxy, strong nature of your square face shape.", img: "https://images.unsplash.com/photo-1622286332307-0c73a9483321?auto=format&fit=crop&w=800&q=80" }
         ],
         Female: [
             { style: "Voluminous Curls", desc: "Soft circular movement to counteract a sharp jawline.", img: "https://images.unsplash.com/photo-1580618672591-eb1c96b5007e?auto=format&fit=crop&w=800&q=80" },
