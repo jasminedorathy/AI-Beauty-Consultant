@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from app.schemas.appointment import AppointmentCreate
 from app.mongodb.collections import appointments_collection
-from app.auth.jwt_handler import get_current_user
+from app.api.routes import get_current_user
 from datetime import datetime
 import uuid
 
@@ -26,7 +26,7 @@ async def book_appointment(appointment: AppointmentCreate, current_user: dict = 
     booking_ref = "BK-" + str(uuid.uuid4().hex[:8]).upper()
     new_booking = {
         "id": str(uuid.uuid4()),
-        "user_id": current_user["id"] if current_user else "guest",
+        "user_id": current_user.get("sub") if current_user else "guest",
         "booking_ref": booking_ref,
         "created_at": datetime.utcnow(),
         **appointment.dict()
@@ -45,7 +45,7 @@ async def book_appointment(appointment: AppointmentCreate, current_user: dict = 
 
 @router.get("/my-bookings")
 async def get_my_bookings(current_user: dict = Depends(get_current_user)):
-    bookings = list(appointments_collection.find({"user_id": current_user["id"]}))
+    bookings = list(appointments_collection.find({"user_id": current_user.get("sub")}))
     for b in bookings:
         b.pop("_id", None)
     return bookings
