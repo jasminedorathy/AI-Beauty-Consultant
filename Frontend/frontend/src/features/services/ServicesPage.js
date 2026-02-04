@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaFemale, FaMale, FaSpa, FaLeaf, FaGem, FaTint } from 'react-icons/fa';
+import { FaFemale, FaMale, FaSpa, FaLeaf, FaGem, FaTint, FaCalendarAlt, FaClock, FaUser, FaTimes, FaCheckCircle } from 'react-icons/fa';
 
 const SERVICE_DATA = {
     Female: {
@@ -70,6 +70,31 @@ const SERVICE_DATA = {
 
 const ServicesPage = () => {
     const [activeTab, setActiveTab] = useState("Female");
+    const [selectedService, setSelectedService] = useState(null);
+    const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+    const [bookingRef, setBookingRef] = useState(null);
+    const [bookingData, setBookingData] = useState({
+        name: '',
+        date: '',
+        time: ''
+    });
+
+    const handleBook = (service) => {
+        setSelectedService(service);
+        setIsBookingModalOpen(true);
+        setBookingRef(null);
+    };
+
+    const handleConfirmBooking = (e) => {
+        e.preventDefault();
+        // Simulate API call
+        const ref = 'BK-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+        setBookingRef(ref);
+        setTimeout(() => {
+            setIsBookingModalOpen(false);
+            setBookingData({ name: '', date: '', time: '' });
+        }, 3000);
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 p-8 animate-fade-in-up">
@@ -132,7 +157,10 @@ const ServicesPage = () => {
                                     <p className="text-gray-500 text-sm leading-relaxed mb-4">
                                         {svc.desc}
                                     </p>
-                                    <button className="text-sm font-semibold text-blue-500 hover:text-blue-700 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                    <button
+                                        onClick={() => handleBook(svc)}
+                                        className="text-sm font-semibold text-blue-500 hover:text-blue-700 flex items-center gap-1 group-hover:translate-x-1 transition-transform"
+                                    >
                                         Book Now →
                                     </button>
                                 </div>
@@ -141,7 +169,93 @@ const ServicesPage = () => {
                     </div>
                 ))}
             </div>
+            {/* Booking Modal */}
+            {isBookingModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden">
+                        <div className="bg-gradient-to-r from-teal-600 to-blue-600 p-6 text-white relative">
+                            <button
+                                onClick={() => setIsBookingModalOpen(false)}
+                                className="absolute top-4 right-4 text-white hover:bg-white/20 p-2 rounded-full transition-all"
+                            >
+                                <FaTimes />
+                            </button>
+                            <h3 className="text-2xl font-bold mb-2">Book Appointment</h3>
+                            <p className="text-teal-50 opacity-90">{selectedService?.name}</p>
+                        </div>
 
+                        <div className="p-8">
+                            {!bookingRef ? (
+                                <form onSubmit={handleConfirmBooking} className="space-y-6">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                            <FaUser className="text-teal-500" /> Full Name
+                                        </label>
+                                        <input
+                                            required
+                                            type="text"
+                                            value={bookingData.name}
+                                            onChange={(e) => setBookingData({ ...bookingData, name: e.target.value })}
+                                            placeholder="Enter your name"
+                                            className="w-full px-4 py-3 border-2 border-gray-100 rounded-xl focus:border-teal-500 transition-all outline-none"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                                <FaCalendarAlt className="text-teal-500" /> Date
+                                            </label>
+                                            <input
+                                                required
+                                                type="date"
+                                                value={bookingData.date}
+                                                onChange={(e) => setBookingData({ ...bookingData, date: e.target.value })}
+                                                className="w-full px-4 py-3 border-2 border-gray-100 rounded-xl focus:border-teal-500 transition-all outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                                <FaClock className="text-teal-500" /> Time
+                                            </label>
+                                            <select
+                                                required
+                                                value={bookingData.time}
+                                                onChange={(e) => setBookingData({ ...bookingData, time: e.target.value })}
+                                                className="w-full px-4 py-3 border-2 border-gray-100 rounded-xl focus:border-teal-500 transition-all outline-none"
+                                            >
+                                                <option value="">Select Time</option>
+                                                <option value="10:00 AM">10:00 AM</option>
+                                                <option value="12:00 PM">12:00 PM</option>
+                                                <option value="02:00 PM">02:00 PM</option>
+                                                <option value="04:00 PM">04:00 PM</option>
+                                                <option value="06:00 PM">06:00 PM</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        className="w-full py-4 bg-gradient-to-r from-teal-600 to-blue-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
+                                    >
+                                        Confirm Booking
+                                    </button>
+                                </form>
+                            ) : (
+                                <div className="text-center py-8 space-y-4 animate-bounce-in">
+                                    <FaCheckCircle className="text-green-500 text-6xl mx-auto" />
+                                    <h4 className="text-2xl font-bold text-gray-800">Booking Confirmed!</h4>
+                                    <div className="bg-gray-50 p-4 rounded-xl border border-dashed border-gray-300">
+                                        <p className="text-sm text-gray-500 mb-1">Booking Reference</p>
+                                        <p className="font-mono text-xl font-bold text-teal-600">{bookingRef}</p>
+                                    </div>
+                                    <p className="text-gray-500 text-sm italic">
+                                        We'll see you at {bookingData.time} on {bookingData.date}.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
