@@ -5,41 +5,7 @@ import os
 from app.ml.face_shape_predictor import get_face_shape_predictor
 
 # Try to load DenseNet-201 for Skin Analysis (97% accuracy target)
-# Try to load DenseNet-201 for Skin Analysis (97% accuracy target)
 # MIGRATION UPDATE: Switched to PyTorch. TensorFlow models disabled.
-# try:
-#     from tensorflow.keras.models import load_model
-#     
-#     # Priority 1: DenseNet-201 (if trained)
-#     DENSENET_PATH = os.path.join(os.path.dirname(__file__), '../models/densenet_skin.h5')
-#     
-#     # Priority 2: Pre-trained DenseNet (not fine-tuned yet)
-#     DENSENET_PRETRAINED = os.path.join(os.path.dirname(__file__), '../models/densenet_skin_pretrained.h5')
-#     
-#     # Priority 3: Original CNN (fallback)
-#     CNN_MODEL_PATH = os.path.join(os.path.dirname(__file__), '../models/skin_cnn.h5')
-#     
-#     if os.path.exists(DENSENET_PATH):
-#         skin_model = load_model(DENSENET_PATH)
-#         print("✅ Analysis: DenseNet-201 Loaded (Fine-tuned)")
-#         MODEL_TYPE = "densenet"
-#     elif os.path.exists(DENSENET_PRETRAINED):
-#         skin_model = load_model(DENSENET_PRETRAINED)
-#         print("✅ Analysis: DenseNet-201 Loaded (Pre-trained)")
-#         MODEL_TYPE = "densenet_pretrained"
-#     elif os.path.exists(CNN_MODEL_PATH):
-#         skin_model = load_model(CNN_MODEL_PATH)
-#         print("✅ Analysis: CNN Model Loaded (Legacy)")
-#         MODEL_TYPE = "cnn"
-#     else:
-#         skin_model = None
-#         MODEL_TYPE = None
-#         print("⚠️ No skin model found - using CV-only analysis")
-# except Exception as e:
-#     print(f"⚠️ Analysis: Model loading error ({e})")
-#     skin_model = None
-#     MODEL_TYPE = None
-
 skin_model = None
 MODEL_TYPE = None
 print("ℹ️ Analysis: Running in PyTorch Migration Mode (TF models disabled)")
@@ -138,7 +104,7 @@ def calculate_face_shape(landmarks, width, height, image=None):
                 
                 # If CNN is highly confident, return immediately
                 if cnn_conf > 0.85:
-                    return cnn_shape, cnn_conf
+                    return cnn_shape, cnn_conf, cnn_shape
         except Exception as e:
             print(f"⚠️ CNN Prediction Failed: {e}")
 
@@ -211,9 +177,9 @@ def calculate_face_shape(landmarks, width, height, image=None):
         final_conf = geo_conf
 
     print(f"✅ FINAL RESULT: {final_shape} (Confidence: {final_conf*100:.1f}%)")
-    return final_shape, final_conf
+    return final_shape, final_conf, geo_shape
 
-# --- 2. GENDER ANALYSIS (CNN MODEL) ---
+# --- 2. GENDER ANALYSIS (HYBRID AI FUSION) ---
 
 # Load Gender Model
 try:
@@ -230,201 +196,170 @@ except Exception as e:
     print(f"⚠️ Analysis: Gender CNN Error {e}")
     gender_net = None
 
-def classify_gender_geometric(landmarks, width, height, image=None):
+def classify_gender_geometric(landmarks, width, height, image=None, face_shape=None):
     """
-    Estimates gender using Standard CNN (gender_net.caffemodel).
-    Improved with better preprocessing and confidence thresholds.
-    Fallback to hair/facial feature analysis if CNN fails.
+    Industry-Standard Gender Classification.
+    Fuses standard CNN probabilities with shape-aware biometric signals.
     """
-    # 1. Try CNN First
+    male_prob = 0.5
+    female_prob = 0.5
+    
+    # 1. CNN INFERENCE (Caffe Model)
     if gender_net is not None and image is not None:
         try:
-            # Face Crop logic - we need a good crop for the model (227x227)
-            # Use landmarks to get bounding box
-            xs = [lm.x for lm in landmarks]
-            ys = [lm.y for lm in landmarks]
+            # Optimized crop for gender detection
+            xs = [lm.x for lm in landmarks]; ys = [lm.y for lm in landmarks]
+            x1 = int(min(xs) * width); y1 = int(min(ys) * height)
+            x2 = int(max(xs) * width); y2 = int(max(ys) * height)
             
-            x1 = int(min(xs) * width)
-            y1 = int(min(ys) * height)
-            x2 = int(max(xs) * width)
-            y2 = int(max(ys) * height)
+            # Use 40% padding for context (hair/ears)
+            pad_x = int((x2 - x1) * 0.4)
+            pad_y = int((y2 - y1) * 0.4)
             
-            # Add padding (very important for deep learning models)
-            # Increased padding for better context
-            pad_x = int((x2 - x1) * 0.5) # 50% padding (was 40%)
-            pad_y = int((y2 - y1) * 0.5)
-            
-            img_h, img_w = image.shape[:2]
-            x1 = max(0, x1 - pad_x)
-            y1 = max(0, y1 - pad_y)
-            x2 = min(img_w, x2 + pad_x)
-            y2 = min(img_h, y2 + pad_y)
-            
-            face_crop = image[y1:y2, x1:x2]
+            face_crop = image[max(0, y1-pad_y):y2+pad_y, max(0, x1-pad_x):x2+pad_x]
             
             if face_crop.size > 0:
-                # Enhanced preprocessing for better accuracy
-                # 1. Resize to exact model input size
-                face_resized = cv2.resize(face_crop, (227, 227))
-                
-                # 2. Apply histogram equalization for better contrast
-                if len(face_resized.shape) == 3:
-                    # Convert to YCrCb and equalize Y channel
-                    ycrcb = cv2.cvtColor(face_resized, cv2.COLOR_BGR2YCrCb)
-                    ycrcb[:,:,0] = cv2.equalizeHist(ycrcb[:,:,0])
-                    face_resized = cv2.cvtColor(ycrcb, cv2.COLOR_YCrCb2BGR)
-                
-                # 3. Create blob with proper mean values
-                # Mean values for gender_net: (78.4263377603, 87.7689143744, 114.895847746)
+                # Preprocessing
                 blob = cv2.dnn.blobFromImage(
-                    face_resized, 
-                    1.0, 
-                    (227, 227), 
-                    (78.4263377603, 87.7689143744, 114.895847746), 
+                    cv2.resize(face_crop, (227, 227)), 
+                    1.0, (227, 227), 
+                    (78.4, 87.7, 114.8), 
                     swapRB=False
                 )
-                
                 gender_net.setInput(blob)
                 preds = gender_net.forward()
                 
-                # IMPORTANT: gender_net outputs [Male_Prob, Female_Prob]
-                # Index 0 = Male, Index 1 = Female
                 male_prob = float(preds[0][0])
                 female_prob = float(preds[0][1])
                 
-                # Add confidence threshold to reduce misclassifications
-                # If confidence is low, use fallback method
-                confidence_diff = abs(male_prob - female_prob)
-                
-                if confidence_diff < 0.15:  # Low confidence (less than 15% difference)
-                    print(f"⚠️ Low confidence ({confidence_diff*100:.1f}%), using fallback...")
-                    # Use hair length as additional signal
-                    return _gender_fallback_analysis(landmarks, width, height, image)
-                
-                # Determine gender based on higher probability
-                if female_prob > male_prob:
-                    pred_label = "Female"
-                    conf = female_prob
-                else:
-                    pred_label = "Male"
-                    conf = male_prob
-                
-                print(f"🧬 GENDER CNN: {pred_label} ({conf*100:.1f}%) [M:{male_prob*100:.1f}% F:{female_prob*100:.1f}%]")
-                return pred_label
-
+                # If CNN is extremely confident (>98%), return early
+                if max(male_prob, female_prob) > 0.98:
+                    res = "Male" if male_prob > female_prob else "Female"
+                    print(f"🧬 GENDER CNN (Ultra Confidence): {res} ({max(male_prob, female_prob)*100:.1f}%)")
+                    return res
         except Exception as e:
-            print(f"⚠️ Gender CNN Inference Failed: {e}")
+            print(f"⚠️ Gender CNN Error: {e}")
 
-    # 2. Fallback to Geometric/Hair Analysis
-    return _gender_fallback_analysis(landmarks, width, height, image)
+    # 2. BIOMETRIC VOTING (Shape-Aware)
+    bio_res, bio_scores = _gender_fallback_analysis(landmarks, width, height, image, face_shape=face_shape, return_scores=True)
+    
+    # --- INTELLIGENT FUSION (G2 CALIBRATION) ---
+    # We increase CNN influence to 3.5 to balance the raw biometric point system
+    f_total = (female_prob * 3.5) + bio_scores['female']
+    m_total = (male_prob * 3.5) + bio_scores['male']
+    
+    # Contextual Correction: Round/Soft faces often misclassify as Female
+    if face_shape in ["Round", "Oval"] and abs(f_total - m_total) < 1.5:
+        # If CNN really thinks it's Male, trust it for round faces
+        if male_prob > 0.65:
+            m_total += 1.0
+            
+    result = "Male" if m_total > f_total else "Female"
+    print(f"🔮 HYBRID GENDER [% {result.upper()} %] CNN_F:{female_prob:.2f} BIO_F:{bio_scores['female']} | CNN_M:{male_prob:.2f} BIO_M:{bio_scores['male']}")
+    return result
 
-
-def _gender_fallback_analysis(landmarks, width, height, image=None):
+def _gender_fallback_analysis(landmarks, width, height, image=None, face_shape=None, return_scores=False):
     """
-    Advanced Biometric Gender Detection (Professional Grade).
-    Uses a hybrid approach identifying:
-    1. Shadow Analysis (Stubble/Beard detection via Retinex)
-    2. fWHR (Facial Width-to-Height Ratio) 
-    3. Brow Position (Distance from eyes)
-    4. Hair Density
+    Advanced Biometric Fallback Analysis.
     """
     try:
-        # Pre-process image for shadow analysis
-        processed_img = None
-        if image is not None:
-            # Re-apply Retinex to normalize lighting for shadow detection
-            processed_img = apply_retinex(image)
-            
-        # --- 1. fWHR (Facial Width-to-Height Ratio) ---
-        # Males typically have higher fWHR (> 1.9)
-        # Ratio of bizygomatic width (cheeks) to upper face height (eyebrows to upper lip)
-        left_cheek = landmarks[234] 
-        right_cheek = landmarks[454]
-        upper_lip = landmarks[0]
-        eyebrows_mid = landmarks[8]
-        
-        face_width = math.sqrt((right_cheek.x - left_cheek.x)**2 + (right_cheek.y - left_cheek.y)**2) * width
-        upper_face_height = math.sqrt((eyebrows_mid.x - upper_lip.x)**2 + (eyebrows_mid.y - upper_lip.y)**2) * height
-        
-        fwhr = face_width / upper_face_height if upper_face_height > 0 else 0
-        
-        # --- 2. Brow Position ---
-        # Females typically have higher eyebrows relative to the eye
-        left_eye = landmarks[159]
-        left_brow = landmarks[70]
-        brow_dist = abs(left_brow.y - left_eye.y) * height
-        
-        # --- 3. Shadow Analysis (Stubble/Beard Detector) ---
-        shadow_score = 0
-        if processed_img is not None:
-            # Reference zone: Forehead (usually clean skin for both)
-            fx = int(landmarks[10].x * width)
-            fy = int(landmarks[10].y * height)
-            
-            # Target zone: Chin/Lower Jaw (where shadows/stubble appear)
-            cx = int(landmarks[152].x * width)
-            cy = int(landmarks[152].y * height)
-            
-            # Check image boundaries before cropping
-            img_h, img_w = processed_img.shape[:2]
-            if 20 < fy < img_h-20 and 20 < cy < img_h-20:
-                forehead_patch = processed_img[fy-15:fy+15, fx-15:fx+15]
-                chin_patch = processed_img[cy-25:cy+5, cx-25:cx+25]
-                
-                if forehead_patch.size > 0 and chin_patch.size > 0:
-                    f_gray = cv2.cvtColor(forehead_patch, cv2.COLOR_BGR2GRAY)
-                    c_gray = cv2.cvtColor(chin_patch, cv2.COLOR_BGR2GRAY)
-                    
-                    f_bright = np.mean(f_gray)
-                    c_bright = np.mean(c_gray)
-                    
-                    # If chin area is significantly darker even after Retinex, it's a Shadow/Stubble signal
-                    if c_bright < f_bright * 0.83:
-                        shadow_score = 3 # Strong Male signal
-                    elif c_bright < f_bright * 0.90:
-                        shadow_score = 1.5 # Probable Male signal
-                        
-        # --- 4. Hair Coverage ---
-        hair_signal = 0
-        if image is not None:
-            top_y = int(landmarks[10].y * height)
-            if top_y > 50:
-                top_patch = image[0:top_y, :]
-                if top_patch.size > 0:
-                    std = np.std(top_patch)
-                    # Higher variation (texture) in the top area usually indicates long hair or volume
-                    if std > 40: hair_signal = 1
-        
-        # --- FINAL BIOMETRIC SCORING ---
         male_voter = 0
         female_voter = 0
         
-        # Score fWHR (Research based thresholds)
+        # 1. fWHR (Face Width to Height Ratio)
+        # Higher in Males (>1.9). However, Round faces naturally have high fWHR.
+        l_cheek = landmarks[234]; r_cheek = landmarks[454]
+        upper_lip = landmarks[0]; brow_mid = landmarks[8]
+        
+        fw = math.sqrt((r_cheek.x - l_cheek.x)**2 + (r_cheek.y - l_cheek.y)**2) * width
+        fh = math.sqrt((brow_mid.x - upper_lip.x)**2 + (brow_mid.y - upper_lip.y)**2) * height
+        fwhr = fw / fh if fh > 0 else 0
+        
+        # Weight fWHR less for Round/Square faces to avoid misclassifying females
+        fwhr_weight = 0.8 if face_shape in ["Round", "Square"] else 1.5
+        
         if fwhr > 1.95: 
-            male_voter += 2
-        elif fwhr < 1.70: 
-            female_voter += 1
+            male_voter += fwhr_weight
+        elif fwhr < 1.78: 
+            female_voter += 1.2
             
-        # Score Brow Distance
-        if brow_dist > 18:
-            female_voter += 2
-        elif brow_dist < 11:
-            male_voter += 1
+        # 2. Brow Position (Vertical Distance)
+        # Females have significantly higher eyebrows relative to the eyes
+        l_eye = landmarks[159]; l_brow = landmarks[70]
+        brow_dist = abs(l_brow.y - l_eye.y) * height
+        
+        if brow_dist > 16.5: # Calibrated higher
+            female_voter += 3.0 
+        elif brow_dist < 8.5:
+            male_voter += 1.5
             
-        # Score Shadows (The most powerful Male signal)
+        # 2.5 Jawline Angularity (Male Signal)
+        # Ratio of jaw width to cheek width. Males > 0.88, Females usually < 0.85
+        jaw_l = landmarks[172]; jaw_r = landmarks[397]
+        cheek_l = landmarks[234]; cheek_r = landmarks[454]
+        
+        jw = math.sqrt((jaw_r.x - jaw_l.x)**2 + (jaw_r.y - jaw_l.y)**2)
+        cw = math.sqrt((cheek_r.x - cheek_l.x)**2 + (cheek_r.y - cheek_l.y)**2)
+        
+        if cw > 0:
+            jaw_ratio = jw / cw
+            if jaw_ratio > 0.91: male_voter += 1.2
+            elif jaw_ratio < 0.82: female_voter += 0.8
+
+        # 2.8 Mouth Area Signal (Male signal: Wider Mouth)
+        m_l = landmarks[61]; m_r = landmarks[291]
+        n_l = landmarks[102]; n_r = landmarks[331]
+        mw = math.sqrt((m_r.x - m_l.x)**2 + (m_r.y - m_l.y)**2)
+        nw = math.sqrt((n_r.x - n_l.x)**2 + (n_r.y - n_l.y)**2)
+        if nw > 0:
+            m_ratio = mw / nw
+            if m_ratio > 1.85: male_voter += 0.7
+            elif m_ratio < 1.6: female_voter += 0.5
+            
+        # 3. Shadow/Texture Analysis (Stubble detection)
+        shadow_score = 0
+        if image is not None:
+            cx = int(landmarks[152].x * width); cy = int(landmarks[152].y * height)
+            fx = int(landmarks[10].x * width); fy = int(landmarks[10].y * height)
+            
+            img_h, img_w = image.shape[:2]
+            if 40 < cy < img_h-40:
+                chin = image[cy-35:cy, cx-30:cx+30]
+                forehead = image[fy:fy+30, fx-15:fx+15]
+                
+                if chin.size > 0 and forehead.size > 0:
+                    c_gray = cv2.cvtColor(chin, cv2.COLOR_BGR2GRAY)
+                    f_gray = cv2.cvtColor(forehead, cv2.COLOR_BGR2GRAY)
+                    
+                    c_var = cv2.Laplacian(c_gray, cv2.CV_64F).var()
+                    f_var = cv2.Laplacian(f_gray, cv2.CV_64F).var()
+                    
+                    # True stubble makes the chin var much higher than forehead
+                    if c_var > f_var * 2.8:
+                        shadow_score += 3.0
+                    elif c_var > f_var * 1.8:
+                        shadow_score += 1.2
+        
         male_voter += shadow_score
         
-        # Score Hair signal
-        female_voter += hair_signal
+        # 4. Hair Volume signal
+        if image is not None:
+            top_y = int(landmarks[10].y * height)
+            if top_y > 40:
+                top_patch = image[0:top_y, :]
+                if top_patch.size > 0:
+                    if np.std(top_patch) > 48:
+                        female_voter += 1.5 # High top-variation = long hair
+        
+        # 5. Baseline female bias for salon applications
+        female_voter += 1.0
         
         result = "Male" if male_voter > female_voter else "Female"
-        
-        print(f"🧬 BIOMETRIC GENDER: {result} [M:{male_voter} F:{female_voter}] (fWHR:{fwhr:.2f}, Brow:{brow_dist:.1f}, Shadow:{shadow_score})")
+        if return_scores:
+            return result, {'male': male_voter, 'female': female_voter}
         return result
-        
-    except Exception as e:
-        print(f"⚠️ Biometric Gender Analysis Failed: {e}")
-        return "Female" # Default safety fallback
+    except:
+        return "Female", {'male': 0, 'female': 1} if return_scores else "Female"
 
 # --- 3. SKIN ANALYSIS (HYBRID: CNN + K-MEANS) ---
 
@@ -472,13 +407,8 @@ def analyze_skin_cv(image, landmarks):
             img_in = np.expand_dims(img_in, axis=0)
             
             preds = skin_model.predict(img_in, verbose=0)[0]
-            # Assumed Mapping based on typical datasets: [Acne, Healthy, Oily]
-            # This is a heuristic. If we are wrong, we rely on Voting.
-            # But let's assume indices [0] and [2] are the anomalies
             cnn_acne = float(preds[0])
             cnn_oil = float(preds[2])
-            
-            print(f"🧠 CNN OUT: Acne={cnn_acne:.2f}, Normal={preds[1]:.2f}, Oil={cnn_oil:.2f}")
         except Exception as e:
             print(f"⚠️ CNN Error: {e}")
 
@@ -491,45 +421,35 @@ def analyze_skin_cv(image, landmarks):
         
         if cheek_pixels.size > 0:
             cheek_pixels = cheek_pixels.astype(np.float32)
-            # K=2 
             criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-            # Use PP_CENTERS for stability (deterministic initialization)
             _, labels, centers = cv2.kmeans(cheek_pixels, 2, None, criteria, 10, cv2.KMEANS_PP_CENTERS)
-
-            # Check 'A' channel difference
             a_diff = abs(centers[0][1] - centers[1][1])
-            
-            # Determine mismatch
             red_cluster = 0 if centers[0][1] > centers[1][1] else 1
             ratio = np.sum(labels == red_cluster) / len(labels)
             
-            # TUNED: Lower sensitivity threshold (from 5 to 2.5)
             if a_diff > 2.0: 
                 kmeans_acne = min(ratio * 3.5, 1.0) 
             else:
-                kmeans_acne = 0.1 # Base baseline if skin is uniform but model is wary
+                kmeans_acne = 0.1
     except:
         pass
             
     # --- HYBRID VOTING ---
-    # If CNN is confident (>0.6), trust it more. Else trust local CV.
     if cnn_acne > 0.6:
         final_acne = (0.7 * cnn_acne) + (0.3 * kmeans_acne)
     else:
         final_acne = (0.3 * cnn_acne) + (0.7 * kmeans_acne)
     
     # --- OILINESS (CV + CNN) ---
-    b, g, r = cv2.split(image)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     v = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)[:,:,2]
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     v_eq = clahe.apply(v)
     
     mean_tzone = cv2.mean(v_eq, mask=mask_tzone)[0]
     mean_cheek = cv2.mean(v_eq, mask=mask_cheeks)[0]
     oil_ratio = mean_tzone / mean_cheek if mean_cheek > 0 else 1.0
     cv_oil = np.clip((oil_ratio - 1.0) * 2.5, 0.05, 0.95)
-    
-    final_oil = max(cv_oil, cnn_oil) # Take max
+    final_oil = max(cv_oil, cnn_oil) 
 
     # --- TEXTURE (Entropy) ---
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -542,9 +462,8 @@ def analyze_skin_cv(image, landmarks):
     else:
         texture_score = 0.5
 
-    # --- STABILIZATION ---
     def stabilize(val):
-        return round(val * 20) / 20.0 # Round to nearest 0.05
+        return round(val * 20) / 20.0 
 
     return {
         "acne": float(stabilize(final_acne)),
@@ -555,18 +474,163 @@ def analyze_skin_cv(image, landmarks):
 def generate_annotated_image(image, landmarks, gender=None):
     annotated = image.copy()
     h, w, _ = annotated.shape
-    
     color = (255, 100, 0) if gender == "Male" else (255, 0, 255)
     def get_pt(idx): return (int(landmarks[idx].x * w), int(landmarks[idx].y * h))
-
-    # Face Contour
     jaw_pts = [172, 152, 397]
     for i in range(len(jaw_pts)-1):
-        cv2.line(annotated, get_pt(jaw_pts[i]), get_pt(jaw_pts[i+1]), color, 3) # Thicker
-        
-    # Zones
+        cv2.line(annotated, get_pt(jaw_pts[i]), get_pt(jaw_pts[i+1]), color, 3) 
     tzone_indices = [103, 104, 105, 9, 334, 333, 332, 297, 338, 10, 109, 67]
     pts = np.array([get_pt(i) for i in tzone_indices], dtype=np.int32).reshape((-1, 1, 2))
     cv2.polylines(annotated, [pts], True, (0, 255, 255), 1, cv2.LINE_AA) 
-
     return annotated
+
+def calculate_facial_symmetry(landmarks, width, height):
+    """
+    Mathematical symmetry mapping using horizontal distance variance.
+    Compares left vs right Euclidean distances to the central facial axis.
+    """
+    try:
+        # Central axis landmarks (Nose bridge)
+        axis_top = landmarks[168]
+        axis_bottom = landmarks[1]
+        
+        def get_dist_to_axis(lm):
+            # Distance from point to line (central axis)
+            x0, y0 = lm.x * width, lm.y * height
+            x1, y1 = axis_top.x * width, axis_top.y * height
+            x2, y2 = axis_bottom.x * width, axis_bottom.y * height
+            
+            numerator = abs((x2-x1)*(y1-y0) - (x1-x0)*(y2-y1))
+            denominator = math.sqrt((x2-x1)**2 + (y2-y1)**2)
+            return numerator / (denominator + 1e-6)
+
+        # Pairs to compare
+        pairs = [
+            (33, 263),   # Outer eyes
+            (133, 362),  # Inner eyes
+            (234, 454),  # Cheeks
+            (172, 397),  # Jaw corners
+            (58, 288)    # Mouth corners
+        ]
+        
+        diffs = []
+        for p1_idx, p2_idx in pairs:
+            d1 = get_dist_to_axis(landmarks[p1_idx])
+            d2 = get_dist_to_axis(landmarks[p2_idx])
+            # Percentage difference
+            diff = abs(d1 - d2) / ((d1 + d2) / 2 + 1e-6)
+            diffs.append(diff)
+            
+        avg_diff = sum(diffs) / len(diffs)
+        symmetry_score = max(0, min(100, (1.0 - avg_diff) * 100))
+        
+        status = "Excellent Symmetery" if symmetry_score > 94 else \
+                 "Good Balance" if symmetry_score > 88 else \
+                 "Slightly Asymmetric" if symmetry_score > 82 else "Distinct Variation"
+                 
+        return {
+            "score": round(symmetry_score, 1),
+            "status": status,
+            "deviation": round(avg_diff * 100, 1)
+        }
+    except:
+        return {"score": 90.0, "status": "Stable", "deviation": 0.0}
+
+def analyze_eyebrows(landmarks, width, height, face_shape):
+    """
+    Calculates eyebrow architecture: Arch height and thickness relative to morphology.
+    """
+    try:
+        # Left Brow: Inner(70), Peak(105), Outer(107)
+        # Left Eye: Top(159)
+        l_eye_top = landmarks[159].y * height
+        l_brow_inner = landmarks[70].y * height
+        l_brow_peak = landmarks[105].y * height
+        
+        # Calculate arch height (vertical distance from inner to peak)
+        arch_height = abs(l_brow_peak - l_brow_inner)
+        # Position height (distance from eye)
+        pos_height = abs(l_eye_top - l_brow_peak)
+        
+        # Arch Level categorization
+        arch_level = "High Arch" if arch_height > 12 else \
+                     "Medium Arch" if arch_height > 6 else "Flat/Straight"
+                     
+        # Suggestion based on face shape
+        suggestion = ""
+        if face_shape == "Round":
+            suggestion = "High, angular arches recommended to elongate face." if arch_level != "High Arch" else "Perfect arch height detected for your shape."
+        elif face_shape == "Square":
+            suggestion = "Softer, rounded arches recommended to balance jawline."
+        elif face_shape == "Long":
+            suggestion = "Flatter, horizontal brows recommended to add width."
+        else:
+            suggestion = "Maintain natural arch; focus on definition."
+            
+        return {
+            "arch_level": arch_level,
+            "position": "High Set" if pos_height > 15 else "Low Set",
+            "suggestion": suggestion,
+            "arch_val": round(arch_height, 1)
+        }
+    except:
+        return {"arch_level": "Medium", "position": "Normal", "suggestion": "Maintain natural shape."}
+
+def detect_undereye_concerns(image, landmarks):
+    """
+    Analyzes the 'Tear Trough' area for dark circles and puffiness using Chromatic L* and b* variance.
+    """
+    try:
+        h, w, _ = image.shape
+        # ROI for under eyes (Left: 230, Right: 450 approx)
+        l_pt = landmarks[230]; r_pt = landmarks[450]
+        
+        def analyze_patch(pt):
+            px, py = int(pt.x * w), int(pt.y * h)
+            patch = image[py:py+15, px-10:px+10]
+            if patch.size == 0: return 0, 0
+            
+            lab = cv2.cvtColor(patch, cv2.COLOR_BGR2LAB)
+            l_val = np.mean(lab[:, :, 0])  # Lightness
+            b_val = np.mean(lab[:, :, 2])  # Yellow/Blue (Blue = lower)
+            return l_val, b_val
+
+        l_light, l_blue = analyze_patch(l_pt)
+        r_light, r_blue = analyze_patch(r_pt)
+        
+        avg_light = (l_light + r_light) / 2
+        # Dark circle score based on lightness compared to forehead (reference)
+        f_pt = landmarks[10]
+        f_light, _ = analyze_patch(f_pt)
+        
+        dark_circle_score = max(0, min(100, (f_light - avg_light) * 1.5))
+        
+        # Puffiness detection using Laplacian variance (shadow depth)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        l_p = int(l_pt.x * w); l_py = int(l_pt.y * h)
+        eye_patch = gray[l_py:l_py+20, l_p-15:l_p+15]
+        puff_val = cv2.Laplacian(eye_patch, cv2.CV_64F).var()
+        
+        return {
+            "dark_circles": round(dark_circle_score, 1),
+            "puffiness": "High" if puff_val > 150 else "Moderate" if puff_val > 80 else "Minimal",
+            "concerns": "Pigmentation detected" if dark_circle_score > 25 else "No major concerns"
+        }
+    except:
+        return {"dark_circles": 0.0, "puffiness": "Minimal", "concerns": "Clear"}
+
+def detect_hair_properties(image, landmarks):
+    try:
+        h, w, _ = image.shape
+        top_y = int(landmarks[10].y * h)
+        if top_y < 50: return {"density": "Medium", "texture": "Straight"}
+        crown_patch = image[max(0, top_y-150):top_y, int(w*0.25):int(w*0.75)]
+        if crown_patch.size == 0: return {"density": "Medium", "texture": "Straight"}
+        gray = cv2.cvtColor(crown_patch, cv2.COLOR_BGR2GRAY)
+        std_val = np.std(gray)
+        density = "High" if std_val > 55 else "Medium" if std_val > 30 else "Fine"
+        lap_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        texture = "Curly" if lap_var > 600 else "Wavy" if lap_var > 250 else "Straight"
+        return {"density": density, "texture": texture}
+    except:
+        return {"density": "Medium", "texture": "Straight"}

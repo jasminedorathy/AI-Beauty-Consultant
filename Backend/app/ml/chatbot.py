@@ -184,6 +184,22 @@ Ask me about any specific treatment! 💆‍♀️"""
         # 17. Eye Care
         if any(word in msg_lower for word in ["eye", "dark circle", "puffy", "under eye"]):
             return "For eye concerns:\n• **Dark circles**: Vitamin C or caffeine eye cream\n• **Puffiness**: Cold compress, jade roller\n• **Fine lines**: Retinol eye cream (gentle!)\n• Get 7-8 hours of sleep\n• Stay hydrated 👁️"
+            
+        # 18. Hair Care (Non-styling)
+        if any(word in msg_lower for word in ["hair fall", "dandruff", "scalp", "shampoo", "conditioner"]):
+            return "For hair & scalp health:\n• **Dandruff**: Ketoconazole or Zinc Pyrithione shampoo\n• **Hair fall**: Scalp massage, rosemary oil, biotin-rich diet\n• **Dry hair**: Deep conditioning mask weekly, avoid heat tools\n• Avoid washing with very hot water! 💇‍♂️"
+
+        # 19. Nail Care
+        if any(word in msg_lower for word in ["nail", "manicure", "pedicure", "cuticle"]):
+            return "For healthy nails:\n• Keep them hydrated with cuticle oil\n• Avoid using nails as tools\n• Take Biotin supplements if brittle\n• Book a professional manicure for deep cleaning! 💅"
+            
+        # 20. Wedding / Special Event
+        if any(word in msg_lower for word in ["wedding", "bride", "marriage", "party", "event"]):
+            return "Getting ready for a big day? 💍 We recommend:\n• Start skin treatments 3-6 months early\n• Don't try new aggressive products 2 weeks before\n• Hydrating facial 2 days prior\n• Book a consultation for bridal hair and makeup! ✨"
+
+        # 21. Men's Grooming / Shaving
+        if any(word in msg_lower for word in ["shave", "beard", "razor", "aftershave", "grooming"]):
+            return "Men's grooming tips:\n• Shave in the direction of hair growth\n• Use a sharp razor and shaving cream\n• Apply alcohol-free aftershave balm\n• Use beard oil for soft facial hair 🪒"
         
         # 18. General / Default Response
         if user_context and face_shape != "Unknown":

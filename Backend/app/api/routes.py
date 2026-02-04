@@ -5,7 +5,7 @@ from app.pipeline.face_detection import detect_faces
 from app.ml.predictor import predict_skin_conditions
 from app.auth.jwt_handler import verify_access_token
 from app.mongodb.collections import analysis_collection
-from app.ml.analysis_cv import calculate_face_shape, analyze_skin_cv, generate_annotated_image
+from app.ml.analysis_cv import calculate_face_shape, analyze_skin_cv, generate_annotated_image, detect_hair_properties
 from app.ml.consultant import generate_consultation
 import cv2
 import os
@@ -73,9 +73,9 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
         # 1. Face Shape & Gender Analysis
         from app.ml.analysis_cv import classify_gender_geometric
         
-        # Unpack tuple (Shape, Confidence)
-        shape_name, shape_conf = calculate_face_shape(landmarks, img.shape[1], img.shape[0], img)
-        gender = classify_gender_geometric(landmarks, img.shape[1], img.shape[0], img)
+        # Unpack tuple (Shape, Confidence, Fallback)
+        shape_name, shape_conf, _ = calculate_face_shape(landmarks, img.shape[1], img.shape[0], img)
+        gender = classify_gender_geometric(landmarks, img.shape[1], img.shape[0], img, face_shape=shape_name)
 
         # 2. Skin Analysis (OpenCV)
         face_img = img[y:y+h, x:x+w]
@@ -93,6 +93,19 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
         eye_color, eye_hex = detect_eye_color(img, landmarks)
         hair_color, hair_hex = detect_hair_color(img, landmarks)
         season, palette = get_seasonal_color_palette(skin_tone, undertone, eye_color, hair_color)
+        
+        # 3.5 ADVANCED DIAGNOSTICS (MATHEMATICAL)
+        from app.ml.analysis_cv import (
+            calculate_facial_symmetry, 
+            analyze_eyebrows, 
+            detect_undereye_concerns,
+            detect_hair_properties
+        )
+        
+        symmetry_data = calculate_facial_symmetry(landmarks, img.shape[1], img.shape[0])
+        eyebrow_data = analyze_eyebrows(landmarks, img.shape[1], img.shape[0], shape_name)
+        undereye_data = detect_undereye_concerns(img, landmarks)
+        hair_props = detect_hair_properties(img, landmarks)
 
         # 4. Generate Consultant Recommendations (Pass all color data)
         recommendations = generate_consultation(
@@ -155,6 +168,11 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
                 "eye_color": eye_color,
                 "hair_color": hair_color,
                 "season": season,
+                "hair_properties": hair_props,
+                # New Metrics
+                "symmetry": symmetry_data,
+                "eyebrows": eyebrow_data,
+                "undereye": undereye_data,
                 "recommendations": recommendations,
                 "personalized_tips": personalized_tips,
                 "created_at": datetime.utcnow()
@@ -191,12 +209,17 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
                     "eye_hex": eye_hex,
                     "hair_color": hair_color,
                     "hair_hex": hair_hex,
+                    "hair_properties": hair_props,
                     "season": season
                 },
                 "recommendations": recommendations,
                 "personalized_tips": personalized_tips,
                 "image_url": image_url,
-                "annotated_image_url": annotated_image_url
+                "annotated_image_url": annotated_image_url,
+                "hair_properties": hair_props,
+                "symmetry": symmetry_data,
+                "eyebrows": eyebrow_data,
+                "undereye": undereye_data,
             }
         }
     except Exception as e:
@@ -338,14 +361,14 @@ async def chat_consultant(req: ChatRequest, current_user: dict = Depends(get_cur
 7. If they ask to book, say "I can help you schedule! Please call us at (555) 123-4567"
 """
         
-        # Try top free models from 2026 (best performance)
+        # Try top reliable free models from OpenRouter (Fast & High Accuracy)
         models_to_try = [
-            "xiaomi/mimo-v2-flash:free",                    # 309B MoE, rivals Claude Sonnet 4.5
-            "deepseek/deepseek-r1-free",                    # 671B with reasoning, comparable to o1
-            "mistralai/mistral-devstral-2-2512:free",       # 123B agentic coder
-            "nvidia/nemotron-3-nano:free",                  # 30B MoE, efficient
-            "qwen/qwen3-coder:free",                        # Advanced coding/debugging
-            "cognitivecomputations/dolphin-3.0:free",       # Uncensored Mistral-based
+            "google/gemini-2.0-flash-exp:free",
+            "meta-llama/llama-3.1-8b-instruct:free",
+            "google/gemini-exp-1206:free",
+            "liquid/lfm-40b:free",
+            "mistralai/mistral-7b-instruct:free",
+            "microsoft/phi-3-mini-128k-instruct:free",
         ]
         
         import time

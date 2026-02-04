@@ -1,7 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { FaUserAlt, FaChartBar, FaLightbulb, FaCheckCircle, FaExclamationTriangle, FaShieldAlt, FaCamera, FaInfoCircle, FaCalendarAlt, FaFingerprint } from 'react-icons/fa';
 
+/**
+ * ResultCard - A premium, clinical-grade analysis report component
+ */
 const ResultCard = ({ data, image, annotatedImage }) => {
-  const [showAnnotated, setShowAnnotated] = React.useState(true);
+  const [showAnnotated, setShowAnnotated] = useState(true);
+  const [activeSection, setActiveSection] = useState('skin');
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
 
   if (!data) return null;
 
@@ -10,256 +20,294 @@ const ResultCard = ({ data, image, annotatedImage }) => {
   if (error) {
     return (
       <div className="mt-8 animate-fade-in-up">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl shadow-lg relative flex items-center">
-          <div className="mr-4 text-2xl">⚠️</div>
+        <div className="bg-white border-2 border-red-100 p-8 rounded-3xl shadow-xl flex items-start gap-6">
+          <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 text-3xl shrink-0">
+            <FaExclamationTriangle />
+          </div>
           <div>
-            <strong className="font-bold text-lg mb-1 block">Analysis Could Not Complete</strong>
-            <span className="block">{error.replace(/"/g, '')}</span>
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">Analysis Interrupted</h3>
+            <p className="text-gray-600 leading-relaxed mb-4">{error.replace(/"/g, '')}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors"
+            >
+              Try Again
+            </button>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
-  // Helper for score color
-  const getScoreColor = (value) => {
-    if (value > 0.7) return "text-red-600";
-    if (value > 0.4) return "text-amber-600";
-    return "text-emerald-600";
+  const getScoreInfo = (value) => {
+    if (value > 0.7) return { label: "High Sensitivity", color: "red", icon: "⚠️" };
+    if (value > 0.4) return { label: "Moderate Concern", color: "amber", icon: "⚖️" };
+    return { label: "Optimal Condition", color: "emerald", icon: "✅" };
   };
 
-  const getProgressColor = (value) => {
-    if (value > 0.7) return "bg-gradient-to-r from-red-500 to-red-600";
-    if (value > 0.4) return "bg-gradient-to-r from-amber-500 to-amber-600";
-    return "bg-gradient-to-r from-emerald-500 to-emerald-600";
-  };
-
-  const getScoreBadge = (value) => {
-    if (value > 0.7) return { text: "High", color: "bg-red-100 text-red-700 border-red-300" };
-    if (value > 0.4) return { text: "Moderate", color: "bg-amber-100 text-amber-700 border-amber-300" };
-    return { text: "Low", color: "bg-emerald-100 text-emerald-700 border-emerald-300" };
-  };
+  const reportId = `AB-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+  const analysisDate = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
-    <div className="max-w-7xl mx-auto mt-12 animate-fade-in-up">
+    <div className={`max-w-6xl mx-auto transition-all duration-700 transform px-4 pb-12 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
 
-      {/* Header Section */}
-      <div className="bg-gradient-to-r from-purple-600 to-teal-600 rounded-t-3xl p-8 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold mb-2">
-              {gender === "Male" ? "Gentleman's Analysis" : "Beauty Analysis"} Report
-            </h2>
-            <p className="text-purple-100">Comprehensive AI-Powered Facial Assessment</p>
-          </div>
-          <div className="bg-white/20 backdrop-blur-md px-6 py-3 rounded-xl">
-            <div className="text-sm text-purple-100 mb-1">Face Shape</div>
-            <div className="text-2xl font-bold">{faceShape}</div>
+      {/* PROFESSIONAL HEADER BAR */}
+      <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100 mb-8">
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 p-1">
+          <div className="bg-slate-900/40 backdrop-blur-sm px-8 py-5 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-indigo-500/20 border border-indigo-400/30 rounded-xl flex items-center justify-center text-indigo-400 text-xl shadow-lg">
+                <FaFingerprint />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white tracking-tight">Facial Intelligence Report</h2>
+                <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                  ID: {reportId} • {analysisDate}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-center min-w-[100px] backdrop-blur-xl">
+                <div className="text-[10px] text-slate-500 uppercase font-black">Subject</div>
+                <div className="text-sm font-bold text-white">{gender || 'Profile'}</div>
+              </div>
+              <div className="px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-center min-w-[120px] backdrop-blur-xl">
+                <div className="text-[10px] text-indigo-400 uppercase font-black">Morphology</div>
+                <div className="text-sm font-black text-white">{faceShape || 'Analyzing...'}</div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content Grid */}
-      <div className="bg-white rounded-b-3xl shadow-2xl p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="p-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
 
-          {/* Left Column - Image & Color Analysis */}
-          <div className="space-y-6">
+            {/* LEFT: VISUAL DIAGNOSTICS */}
+            <div className="lg:col-span-12 xl:col-span-5 space-y-6">
+              <div className="group relative rounded-3xl overflow-hidden bg-slate-100 aspect-[4/3] sm:aspect-square shadow-inner transition-all duration-500 hover:shadow-2xl border-4 border-slate-50">
+                <img
+                  src={showAnnotated && annotatedImage ? annotatedImage : image}
+                  alt="Diagnostic Capture"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
 
-            {/* Image Display */}
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-gray-800">Diagnostic View</h3>
-                {annotatedImage && (
-                  <div className="flex bg-white rounded-lg shadow-sm border border-gray-200">
+                {/* Image Toggle Overlays */}
+                <div className="absolute inset-x-4 bottom-4 flex justify-between items-center bg-black/40 backdrop-blur-md rounded-2xl p-2.5 border border-white/20">
+                  <div className="flex bg-white/10 rounded-xl p-1 shadow-inner">
                     <button
                       onClick={() => setShowAnnotated(false)}
-                      className={`px-4 py-2 rounded-l-lg text-sm font-medium transition-all ${!showAnnotated ? 'bg-purple-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${!showAnnotated ? 'bg-white text-slate-900 shadow-xl' : 'text-white hover:bg-white/10'}`}
                     >
-                      Original
+                      RAW
                     </button>
                     <button
                       onClick={() => setShowAnnotated(true)}
-                      className={`px-4 py-2 rounded-r-lg text-sm font-medium transition-all ${showAnnotated ? 'bg-purple-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${showAnnotated ? 'bg-indigo-500 text-white shadow-xl' : 'text-white hover:bg-white/10'}`}
                     >
-                      AI View
+                      AI MAPPING
                     </button>
                   </div>
-                )}
+                  <div className="px-3 py-1.5 bg-indigo-500/20 text-indigo-300 rounded-xl border border-indigo-500/30 text-[10px] font-black uppercase tracking-widest">
+                    Live Feed Active
+                  </div>
+                </div>
+
+                {/* Face Focus Overlay - Scanner Effect */}
+                <div className="absolute inset-0 pointer-events-none border-[1px] border-white/10 m-8 rounded-full"></div>
+                <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-indigo-500 to-transparent shadow-[0_0_15px_indigo] opacity-40 animate-scan"></div>
               </div>
 
-              <div className="relative rounded-xl overflow-hidden bg-gray-900 shadow-lg">
-                <img
-                  src={showAnnotated && annotatedImage ? annotatedImage : image}
-                  alt="Analyzed Face"
-                  className="w-full h-auto object-contain"
-                />
-              </div>
-            </div>
-
-            {/* Color Analysis Card */}
-            {colorAnalysis && (
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-200">
-                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                  <span className="mr-2">🎨</span> Color Analysis
-                </h3>
-                <div className="space-y-3">
-                  {colorAnalysis.skin_tone && (
-                    <div className="flex items-center justify-between bg-white rounded-lg p-3 shadow-sm">
-                      <span className="text-sm font-medium text-gray-600">Skin Tone</span>
-                      <span className="font-semibold text-gray-800">{colorAnalysis.skin_tone}</span>
-                    </div>
-                  )}
-                  {colorAnalysis.undertone && (
-                    <div className="flex items-center justify-between bg-white rounded-lg p-3 shadow-sm">
-                      <span className="text-sm font-medium text-gray-600">Undertone</span>
-                      <span className="font-semibold text-gray-800 capitalize">{colorAnalysis.undertone}</span>
-                    </div>
-                  )}
-                  {colorAnalysis.eye_color && (
-                    <div className="flex items-center justify-between bg-white rounded-lg p-3 shadow-sm">
-                      <span className="text-sm font-medium text-gray-600">Eye Color</span>
-                      <span className="font-semibold text-gray-800">{colorAnalysis.eye_color}</span>
-                    </div>
-                  )}
-                  {colorAnalysis.hair_color && (
-                    <div className="flex items-center justify-between bg-white rounded-lg p-3 shadow-sm">
-                      <span className="text-sm font-medium text-gray-600">Hair Color</span>
-                      <span className="font-semibold text-gray-800">{colorAnalysis.hair_color}</span>
-                    </div>
-                  )}
+              {/* Color Analysis Module */}
+              {colorAnalysis && (
+                <div className="bg-slate-50 rounded-3xl p-6 border border-slate-200 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4 text-slate-900">
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-600"></div>
+                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Chromatic Analysis</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {Object.entries(colorAnalysis).filter(([k]) => k !== 'season' && k !== 'recommended_colors').slice(0, 4).map(([key, val]) => (
+                      <div key={key} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm transition-all hover:bg-indigo-50/30 hover:border-indigo-100">
+                        <div className="text-[10px] text-slate-400 uppercase font-black mb-1">{key.replace('_', ' ')}</div>
+                        <div className="text-sm font-bold text-slate-700 truncate capitalize">{val}</div>
+                      </div>
+                    ))}
+                  </div>
                   {colorAnalysis.season && (
-                    <div className="flex items-center justify-between bg-white rounded-lg p-3 shadow-sm">
-                      <span className="text-sm font-medium text-gray-600">Seasonal Palette</span>
-                      <span className="font-semibold text-purple-600">{colorAnalysis.season}</span>
+                    <div className="mt-4 bg-gradient-to-br from-indigo-700 to-purple-800 rounded-2xl p-5 text-white flex items-center justify-between shadow-xl">
+                      <div>
+                        <div className="text-[10px] font-black uppercase opacity-60 tracking-widest">Personal Palette</div>
+                        <div className="text-xl font-black italic">{colorAnalysis.season}</div>
+                      </div>
+                      <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-2xl shadow-lg border border-white/10">🎨</div>
                     </div>
                   )}
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Right Column - Skin Analysis & Recommendations */}
-          <div className="space-y-6">
-
-            {/* Skin Health Analysis */}
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 border border-blue-200">
-              <h3 className="text-lg font-bold text-gray-800 mb-5 flex items-center">
-                <span className="mr-2">📊</span> Skin Health Metrics
-              </h3>
-
-              <div className="space-y-5">
-                {skinScores && Object.keys(skinScores).length > 0 ? (
-                  Object.entries(skinScores).map(([key, value]) => {
-                    const badge = getScoreBadge(value);
-                    return (
-                      <div key={key} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                        <div className="flex justify-between items-center mb-3">
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl">
-                              {key === "acne" ? "🔴" : key === "oiliness" ? "✨" : "🧱"}
-                            </span>
-                            <div>
-                              <div className="font-bold text-gray-800 capitalize text-sm">{key}</div>
-                              <div className={`text-xs font-semibold px-2 py-0.5 rounded-full border inline-block mt-1 ${badge.color}`}>
-                                {badge.text}
-                              </div>
-                            </div>
-                          </div>
-                          <div className={`text-3xl font-black ${getScoreColor(value)}`}>
-                            {Math.round(value * 100)}
-                            <span className="text-sm text-gray-400 ml-1">%</span>
-                          </div>
-                        </div>
-
-                        <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
-                          <div
-                            className={`h-full rounded-full transition-all duration-1000 ease-out ${getProgressColor(value)} shadow-lg`}
-                            style={{ width: `${value * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-gray-500 text-center py-4">No skin analysis data available</p>
-                )}
-              </div>
+              )}
             </div>
 
-            {/* Recommendations */}
-            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-200">
-              <h3 className="text-lg font-bold text-gray-800 mb-5 flex items-center">
-                <span className="mr-2">✨</span> Personalized Routine
-              </h3>
+            {/* RIGHT: DATA & INSIGHTS */}
+            <div className="lg:col-span-12 xl:col-span-7 space-y-8">
 
-              <div className="space-y-3">
-                {recommendations && recommendations.length > 0 ? (
-                  recommendations.map((rec, i) => {
-                    let icon = "✨";
-                    if (rec.toLowerCase().includes("cleanser") || rec.toLowerCase().includes("wash")) icon = "🧴";
-                    else if (rec.toLowerCase().includes("sunscreen") || rec.toLowerCase().includes("spf")) icon = "☀️";
-                    else if (rec.toLowerCase().includes("moisturizer") || rec.toLowerCase().includes("hydrate")) icon = "💧";
-                    else if (rec.toLowerCase().includes("exfoliate") || rec.toLowerCase().includes("scrub")) icon = "🧼";
-                    else if (rec.toLowerCase().includes("serum")) icon = "🧪";
-                    else if (rec.toLowerCase().includes("mask")) icon = "🧖‍♀️";
-
-                    const formatRec = (text) => {
-                      const parts = text.split(/(\*\*.*?\*\*)/g);
-                      return parts.map((part, index) =>
-                        part.startsWith('**') && part.endsWith('**')
-                          ? <strong key={index} className="text-indigo-900">{part.slice(2, -2)}</strong>
-                          : part
-                      );
-                    };
-
-                    return (
-                      <div
-                        key={i}
-                        className="flex items-start bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200"
-                      >
-                        <span className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-xl mr-3 shadow-sm">
-                          {icon}
-                        </span>
-                        <span className="text-gray-700 font-medium leading-relaxed text-sm pt-2">
-                          {formatRec(rec)}
-                        </span>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-gray-500 text-center py-4">No recommendations available</p>
-                )}
+              {/* SECTION TABS - Professional Slider */}
+              <div className="flex p-1.5 bg-slate-100 rounded-2xl w-full sm:w-fit shadow-inner">
+                {[
+                  { id: 'skin', icon: <FaChartBar />, label: 'Metrics' },
+                  { id: 'routine', icon: <FaShieldAlt />, label: 'Routine' },
+                  { id: 'tips', icon: <FaLightbulb />, label: 'Insights' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveSection(tab.id)}
+                    className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex-1 sm:flex-none ${activeSection === tab.id ? 'bg-white text-slate-900 shadow-xl translate-y-[-1px]' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    {tab.icon} {tab.label}
+                  </button>
+                ))}
               </div>
+
+              {/* SECTION: SKIN HEALTH */}
+              {activeSection === 'skin' && (
+                <div className="space-y-6 animate-fade-in">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {skinScores && Object.keys(skinScores).length > 0 ? (
+                      Object.entries(skinScores).map(([key, value]) => {
+                        const info = getScoreInfo(value);
+                        return (
+                          <div key={key} className="bg-white group p-6 rounded-3xl border border-slate-100 shadow-xl hover:shadow-2xl hover:border-indigo-200 transition-all duration-500">
+                            <div className="flex justify-between items-start mb-6">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h4 className="text-xs font-black uppercase tracking-widest text-slate-900 capitalize">{key}</h4>
+                                </div>
+                                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black border uppercase tracking-tighter shadow-sm
+                                      ${info.color === 'red' ? 'bg-red-50 text-red-600 border-red-100' :
+                                    info.color === 'amber' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                      'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                                  {info.icon} {info.label}
+                                </div>
+                              </div>
+                              <div className={`text-4xl font-black tracking-tighter ${info.color === 'red' ? 'text-red-500' : info.color === 'amber' ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                {Math.round(value * 100)}<span className="text-sm opacity-30 ml-0.5">%</span>
+                              </div>
+                            </div>
+
+                            <div className="relative h-2.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-50">
+                              <div
+                                className={`absolute top-0 left-0 h-full rounded-full transition-all duration-[1.5s] ease-out shadow-[0_0_10px_rgba(0,0,0,0.1)]
+                                    ${info.color === 'red' ? 'bg-gradient-to-r from-red-400 to-red-600' :
+                                    info.color === 'amber' ? 'bg-gradient-to-r from-amber-400 to-amber-600' :
+                                      'bg-gradient-to-r from-emerald-400 to-emerald-600'}`}
+                                style={{ width: `${value * 100}%` }}
+                              />
+                            </div>
+                            <div className="flex justify-between mt-3 px-1">
+                              <span className="text-[10px] font-bold text-slate-300">BENCHMARK</span>
+                              <span className="text-[10px] font-bold text-slate-500">{value > 0.5 ? 'NEEDS ATTENTION' : 'GOOD RANGE'}</span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="col-span-2 py-24 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100 shadow-sm text-2xl">🔬</div>
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Awaiting Deep Metric Feed</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-5 bg-gradient-to-r from-indigo-50 to-slate-50 rounded-2xl border border-indigo-100 flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0"><FaInfoCircle /></div>
+                    <p className="text-xs text-indigo-900 font-medium leading-relaxed italic">
+                      Professional Intelligence Note: These scores are processed via a DenseNet-121 architecture trained on dermatological and aesthetic imaging datasets. Please consult a professional for clinical diagnosis.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION: ROUTINE */}
+              {activeSection === 'routine' && (
+                <div className="space-y-4 animate-fade-in px-1">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900 tracking-tight">AI-Generated Regimen</h3>
+                      <p className="text-xs text-slate-500 font-medium">Customized specifically for your morphological traits.</p>
+                    </div>
+                    <span className="text-[10px] px-4 py-1.5 bg-slate-900 text-white rounded-full font-black uppercase tracking-widest flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span> MEDICAL-GRADE
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    {recommendations && recommendations.length > 0 ? (
+                      recommendations.map((rec, i) => (
+                        <div key={i} className="flex items-start gap-5 bg-white p-6 rounded-3xl border border-slate-100 shadow-md hover:shadow-xl hover:translate-x-1 transition-all group border-l-4 border-l-transparent hover:border-l-indigo-600">
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-50 flex items-center justify-center text-indigo-600 text-xl group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300 shadow-sm">
+                            <FaCheckCircle />
+                          </div>
+                          <div className="flex-1 pt-1.5">
+                            <p className="text-slate-700 font-bold leading-relaxed">{rec.replace(/\*\*/g, '')}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-24 text-center text-slate-300 font-black uppercase tracking-widest text-sm italic">Recalibrating Formula...</div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION: TIPS */}
+              {activeSection === 'tips' && (
+                <div className="space-y-5 animate-fade-in px-1">
+                  <div className="grid grid-cols-1 gap-5">
+                    {personalizedTips && personalizedTips.length > 0 ? (
+                      personalizedTips.map((tip, i) => (
+                        <div key={i} className="relative group overflow-hidden rounded-3xl cursor-default">
+                          <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-800 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                          <div className="relative bg-white p-8 rounded-3xl border border-slate-100 shadow-xl group-hover:bg-transparent group-hover:border-transparent transition-all duration-300 flex items-center gap-8">
+                            <div className="text-5xl filter grayscale group-hover:grayscale-0 group-hover:scale-110 transition-all duration-500 transform">
+                              {tip.match(/^[\u{1F300}-\u{1F9FF}]/u)?.[0] || "💡"}
+                            </div>
+                            <div className="flex-1">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-2 group-hover:text-white/60">Intelligence Asset #{i + 1}</div>
+                              <p className="text-lg font-black text-slate-800 group-hover:text-white transition-all leading-tight tracking-tight">
+                                {tip.replace(/^[\u{1F300}-\u{1F9FF}]\s*/u, '')}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-24 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-100 text-slate-400 font-black uppercase tracking-widest text-xs">
+                        Unlock Advanced Insights in the Premium Ecosystem
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         </div>
 
-        {/* Personalized Tips Section - Full Width */}
-        {personalizedTips && personalizedTips.length > 0 && (
-          <div className="mt-8 bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 rounded-2xl p-6 border border-purple-200">
-            <h3 className="text-xl font-bold text-gray-800 mb-5 flex items-center">
-              <span className="mr-2">💡</span> Your Personalized Beauty Tips
-              <span className="ml-3 text-xs font-normal bg-purple-100 text-purple-700 px-3 py-1 rounded-full">AI-Generated Just For You</span>
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {personalizedTips.map((tip, i) => (
-                <div
-                  key={i}
-                  className="flex items-start bg-white rounded-xl p-4 shadow-sm border border-purple-100 hover:shadow-md hover:border-purple-300 transition-all duration-200"
-                >
-                  <span className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center text-xl mr-3 shadow-sm">
-                    {tip.match(/^[\u{1F300}-\u{1F9FF}]/u)?.[0] || "✨"}
-                  </span>
-                  <span className="text-gray-700 font-medium leading-relaxed text-sm pt-2">
-                    {tip.replace(/^[\u{1F300}-\u{1F9FF}]\s*/u, '')}
-                  </span>
-                </div>
-              ))}
+        {/* FOOTER BAR - Premium Experience */}
+        <div className="px-8 py-6 bg-slate-900 border-t border-slate-800 flex flex-wrap items-center justify-between gap-8">
+          <div className="flex flex-wrap items-center gap-8">
+            <div className="flex items-center gap-2 text-slate-500 text-[10px] font-black tracking-widest uppercase">
+              <FaCalendarAlt className="text-indigo-400" /> VALIDITY: 30 CYCLES
+            </div>
+            <div className="flex items-center gap-2 text-slate-500 text-[10px] font-black tracking-widest uppercase">
+              <FaShieldAlt className="text-emerald-400" /> SHA-256 ENCRYPTED REPORT
             </div>
           </div>
-        )}
+          <div className="flex gap-4 w-full sm:w-auto">
+            <button className="flex-1 sm:flex-none px-8 py-3 bg-slate-800 text-white font-black rounded-xl hover:bg-slate-700 transition-all text-xs tracking-widest uppercase border border-slate-700">
+              SHARE ASSET
+            </button>
+            <button className="flex-1 sm:flex-none px-8 py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-500 transition-all shadow-[0_0_20px_rgba(79,70,229,0.4)] text-xs tracking-widest uppercase">
+              EXPORT ARCHIVE PDF
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

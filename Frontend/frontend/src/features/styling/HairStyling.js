@@ -1,196 +1,211 @@
 import { useEffect, useState } from "react";
 import { getHistory } from "../../services/api";
+import { FaCut, FaPalette, FaHistory, FaInfoCircle, FaStar, FaShapes, FaMagic, FaCheckCircle, FaChevronRight } from 'react-icons/fa';
 
-const HAIR_RECOMMENDATIONS = {
+/**
+ * PREMIUM HAIR RECOMMENDATION ENGINE
+ * Curated high-definition assets for specific face shapes.
+ */
+const HAIR_ASSETS = {
     Oval: {
         Male: [
-            { style: "Pompadour", desc: "Adds volume on top, balancing symmetry.", img: "https://images.unsplash.com/photo-1521146764736-56c929d59c83?auto=format&fit=crop&w=600&q=80" },
-            { style: "Undercut", desc: "Clean sides highlight the perfect geometry.", img: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=600&q=80" },
-            { style: "Buzz Cut", desc: "Minimalist look that highlights facial features.", img: "https://images.unsplash.com/photo-1595152452543-e5cca283f58c?auto=format&fit=crop&w=600&q=80" },
-            { style: "Slick Back", desc: "Formal and timeless on an oval face.", img: "https://images.unsplash.com/photo-1534308143481-c55f00be8bd7?auto=format&fit=crop&w=600&q=80" }
+            { style: "Modern Pompadour", desc: "Adds vertical height to perfectly balance your symmetric oval profile.", img: "https://images.unsplash.com/photo-1599351431247-f10b21ce53e2?auto=format&fit=crop&w=800&q=80" },
+            { style: "Textured Quiff", desc: "A versatile, effortless look that maintains natural facial balance.", img: "https://images.unsplash.com/photo-1622286332307-0c73a9483321?auto=format&fit=crop&w=800&q=80" },
+            { style: "Side Swept Undercut", desc: "Sharp contrast that highlights your strong cheekbone structure.", img: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=800&q=80" },
+            { style: "Classic Slick Back", desc: "Sophisticated and sharp, mirroring your balanced proportions.", img: "https://images.unsplash.com/photo-1521146764736-56c929d59c83?auto=format&fit=crop&w=800&q=80" }
         ],
         Female: [
-            { style: "Long Layers", desc: "Enhances natural movement without hiding features.", img: "https://images.unsplash.com/photo-1513201099705-a9746e1e201f?auto=format&fit=crop&w=600&q=80" },
-            { style: "Blunt Bob", desc: "Sharp lines contrast beautifully with soft curves.", img: "https://images.unsplash.com/photo-1502479532585-618a5948f98d?auto=format&fit=crop&w=600&q=80" },
-            { style: "Curtain Bangs", desc: "Trendy framing that suits oval shapes perfectly.", img: "https://images.unsplash.com/photo-1595959120641-58e369b05485?auto=format&fit=crop&w=600&q=80" },
-            { style: "Beach Waves", desc: "Effortless volume for a balanced look.", img: "https://images.unsplash.com/photo-1526045431048-f857369baa09?auto=format&fit=crop&w=600&q=80" }
+            { style: "Long Silk Layers", desc: "Adds movement without hiding your ideal face shape symmetry.", img: "https://images.unsplash.com/photo-1492106087820-71f1717878e2?auto=format&fit=crop&w=800&q=80" },
+            { style: "Blunt Glass Bob", desc: "A clean, chin-length cut that emphasizes your elegant jawline.", img: "https://images.unsplash.com/photo-1605497788044-5a32c7078486?auto=format&fit=crop&w=800&q=80" },
+            { style: "Curtain Shag", desc: "Softly frames the face, creating a youthful and balanced appearance.", img: "https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=800&q=80" },
+            { style: "Boho Waves", desc: "Gentle volume that complements the smooth curves of your profile.", img: "https://images.unsplash.com/photo-1635273051937-6030999086e3?auto=format&fit=crop&w=800&q=80" }
         ]
     },
     Square: {
         Male: [
-            { style: "Textured Crop", desc: "Softens the strong jawline.", img: "https://images.unsplash.com/photo-1616805763604-d610b4538491?auto=format&fit=crop&w=600&q=80" },
-            { style: "Side Part", desc: "Classic look that complements angular features.", img: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?auto=format&fit=crop&w=600&q=80" },
-            { style: "Crew Cut", desc: "Rugged and low maintenance.", img: "https://images.unsplash.com/photo-1617260029566-f155990264b3?auto=format&fit=crop&w=600&q=80" },
-            { style: "Messy Quiff", desc: "Adds height to balance the width.", img: "https://images.unsplash.com/photo-1503443207934-239a8194a308?auto=format&fit=crop&w=600&q=80" }
+            { style: "Faded Textured Crop", desc: "Softens the strong, angular lines of your masculine jaw.", img: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?auto=format&fit=crop&w=800&q=80" },
+            { style: "Side Part Taper", desc: "A professional look that aligns with your strong structural features.", img: "https://images.unsplash.com/photo-1616805763604-d610b4538491?auto=format&fit=crop&w=800&q=80" },
+            { style: "Buzz Cut Fade", desc: "Highlights your strong skull structure and masculine geometry.", img: "https://images.unsplash.com/photo-1595152452543-e5cca283f58c?auto=format&fit=crop&w=800&q=80" },
+            { style: "Messy Spikes", desc: "Adds verticality to balance the horizontal width of your face.", img: "https://images.unsplash.com/photo-1583327129759-715ce920a232?auto=format&fit=crop&w=800&q=80" }
         ],
         Female: [
-            { style: "Soft Waves", desc: "Diffuses the angles of the jaw.", img: "https://images.unsplash.com/photo-1580618672591-eb1c96b5007e?auto=format&fit=crop&w=600&q=80" },
-            { style: "Long Angles", desc: "Elongates the face shape.", img: "https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=600&q=80" },
-            { style: "Shag Cut", desc: "Retro layers soften the jawline.", img: "https://images.unsplash.com/photo-1605993439219-9d09d2020fa5?auto=format&fit=crop&w=600&q=80" },
-            { style: "Sleek Straight", desc: "Highlights strong features confidently.", img: "https://images.unsplash.com/photo-1632207191677-7813a17e0d3c?auto=format&fit=crop&w=600&q=80" }
+            { style: "Voluminous Curls", desc: "Soft circular movement to counteract a sharp jawline.", img: "https://images.unsplash.com/photo-1580618672591-eb1c96b5007e?auto=format&fit=crop&w=800&q=80" },
+            { style: "Feathered Shag", desc: "Texture around the jaw diffuses strong angular corners.", img: "https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?auto=format&fit=crop&w=800&q=80" },
+            { style: "Deep Side Part", desc: "Asymmetry that makes the face look narrower and softer.", img: "https://images.unsplash.com/photo-1632207191677-7813a17e0d3c?auto=format&fit=crop&w=800&q=80" },
+            { style: "Wavy LOB", desc: "A Long Bob that hits below the jaw to elongate your shape.", img: "https://images.unsplash.com/photo-1534030347209-7147fd9e7f1a?auto=format&fit=crop&w=800&q=80" }
         ]
     },
     Round: {
         Male: [
-            { style: "High Quiff", desc: "Adds height to elongate the face.", img: "https://images.unsplash.com/photo-1493106819501-66d381c466f1?auto=format&fit=crop&w=600&q=80" },
-            { style: "Faux Hawk", desc: "Creates vertical lines and structure.", img: "https://images.unsplash.com/photo-1520338661084-680395057c93?auto=format&fit=crop&w=600&q=80" },
-            { style: "Angular Fringe", desc: "Introduces angles to a round face.", img: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=600&q=80" },
-            { style: "Side Swept", desc: "Asymmetry breaks the circle.", img: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=600&q=80" }
+            { style: "High Volume Quiff", desc: "Delivers maximum vertical lift to elongate your circular profile.", img: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=800&q=80" },
+            { style: "Pompadour Fade", desc: "Slicked up and back provides necessary height and angles.", img: "https://images.unsplash.com/photo-1590246814883-577555a3089d?auto=format&fit=crop&w=800&q=80" },
+            { style: "Angular Faux Hawk", desc: "Directly counters roundness by adding sharp, pointed volume.", img: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=800&q=80" },
+            { style: "Hard Side Part", desc: "Creates a sharp visual line to break up facial circularity.", img: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=800&q=80" }
         ],
         Female: [
-            { style: "Pixie Cut", desc: "Adds volume on top to lengthen profile.", img: "/images/styles/custom_pixie.jpg" },
-            { style: "Deep Side Part", desc: "Asymmetry breaks up the roundness.", img: "https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?auto=format&fit=crop&w=600&q=80" },
-            { style: "Textured Lob", desc: "Vertical lines slim the face.", img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80" },
-            { style: "Asymmetrical Bob", desc: "Edgy lines counter softness.", img: "https://images.unsplash.com/photo-1534030347209-7147fd9e7f1a?auto=format&fit=crop&w=600&q=80" }
-        ]
-    },
-    Diamond: {
-        Male: [
-            { style: "Fringe Up", desc: "Balances narrow forehead.", img: "https://images.unsplash.com/photo-1506634572416-48cdfe530110?auto=format&fit=crop&w=600&q=80" },
-            { style: "Messy Waves", desc: "Adds width to the forehead area.", img: "https://images.unsplash.com/photo-1616805763604-d610b4538491?auto=format&fit=crop&w=600&q=80" },
-            { style: "Man Bun", desc: "Keeps hair off the face, highlighting bone structure.", img: "https://images.unsplash.com/photo-1515202913161-8a48383721a7?auto=format&fit=crop&w=600&q=80" },
-            { style: "Scissor Cut", desc: "Soft textured sides.", img: "https://images.unsplash.com/photo-1605497788044-5a32c7078486?auto=format&fit=crop&w=600&q=80" }
-        ],
-        Female: [
-            { style: "Chin Length Bob", desc: "Adds width to the narrow jawline.", img: "https://plus.unsplash.com/premium_photo-1669865181755-f2eb89679658?auto=format&fit=crop&w=600&q=80" },
-            { style: "Pulled Back", desc: "Shows off the amazing cheekbones.", img: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=600&q=80" },
-            { style: "Wispy Bangs", desc: "Softens the forehead angles.", img: "https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?auto=format&fit=crop&w=600&q=80" },
-            { style: "Hollywood Waves", desc: "Glamorous volume at the jawline.", img: "https://images.unsplash.com/photo-1582250265223-956557378fa4?auto=format&fit=crop&w=600&q=80" }
-        ]
-    },
-    Long: {
-        Male: [
-            { style: "Side Part", desc: "Adds width to balance length.", img: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?auto=format&fit=crop&w=600&q=80" },
-            { style: "Buzz Cut", desc: "Minimizes vertical length.", img: "https://images.unsplash.com/photo-1595152452543-e5cca283f58c?auto=format&fit=crop&w=600&q=80" },
-            { style: "Caesar Cut", desc: "Short bangs shorten the forehead.", img: "https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=600&q=80" },
-            { style: "Crew Cut", desc: "Balanced and clean.", img: "https://images.unsplash.com/photo-1617260029566-f155990264b3?auto=format&fit=crop&w=600&q=80" }
-        ],
-        Female: [
-            { style: "Shoulder Length Waves", desc: "Adds volume to the sides.", img: "https://images.unsplash.com/photo-1580618672591-eb1c96b5007e?auto=format&fit=crop&w=600&q=80" },
-            { style: "Chin Length Bob", desc: "Balances facial length.", img: "https://images.unsplash.com/photo-1502479532585-618a5948f98d?auto=format&fit=crop&w=600&q=80" },
-            { style: "Bangs", desc: "Shortens the appearance of the forehead.", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=600&q=80" },
-            { style: "Curly Shag", desc: "Width and texture are your friends.", img: "https://images.unsplash.com/photo-1581467655410-0c218a3b03d6?auto=format&fit=crop&w=600&q=80" }
-        ]
-    },
-    Heart: {
-        Male: [
-            { style: "Mid-Length Layered", desc: "Balances a narrow angular chin.", img: "https://images.unsplash.com/photo-1514222709107-a180c68d72b4?auto=format&fit=crop&w=600&q=80" },
-            { style: "Side Swept", desc: "Softens the forehead width.", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80" },
-            { style: "Volume on Top", desc: "Draws attention to eyes.", img: "https://images.unsplash.com/photo-1493106819501-66d381c466f1?auto=format&fit=crop&w=600&q=80" },
-            { style: "Long Fringe", desc: "Balances the upper face.", img: "https://images.unsplash.com/photo-1506634572416-48cdfe530110?auto=format&fit=crop&w=600&q=80" }
-        ],
-        Female: [
-            { style: "Long Layers", desc: "Softens the strong jawline.", img: "https://images.unsplash.com/photo-1513201099705-a9746e1e201f?auto=format&fit=crop&w=600&q=80" },
-            { style: "Pixie Cut", desc: "Highlights cheekbones while softening chin.", img: "/images/styles/custom_pixie.jpg" },
-            { style: "Side Part Bob", desc: "Minimizes forehead width.", img: "https://images.unsplash.com/photo-1534030347209-7147fd9e7f1a?auto=format&fit=crop&w=600&q=80" },
-            { style: "Wavy Lob", desc: "Adds volume near the jawline.", img: "https://images.unsplash.com/photo-1526045431048-f857369baa09?auto=format&fit=crop&w=600&q=80" }
+            { style: "Pixie with Height", desc: "Vertical edges provide much-needed contrast to round traits.", img: "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&w=800&q=80" },
+            { style: "Asymmetrical Bob", desc: "Diagonal flow that cuts through the circular face geometry.", img: "https://images.unsplash.com/photo-1605993439219-9d09d2020fa5?auto=format&fit=crop&w=800&q=80" },
+            { style: "Sleek Side Part", desc: "Reduces perceived width by focusing on long vertical lines.", img: "https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?auto=format&fit=crop&w=800&q=80" },
+            { style: "Long Shag", desc: "Crown-focused volume that helps create an oval illusion.", img: "https://images.unsplash.com/photo-1492106087820-71f1717878e2?auto=format&fit=crop&w=800&q=80" }
         ]
     }
 };
-// Fallback
-HAIR_RECOMMENDATIONS.Triangle = HAIR_RECOMMENDATIONS.Square;
+
+// Aliases
+HAIR_ASSETS.Heart = HAIR_ASSETS.Round;
+HAIR_ASSETS.Long = HAIR_ASSETS.Square;
+HAIR_ASSETS.Diamond = HAIR_ASSETS.Oval;
 
 const HairStyling = () => {
     const [userData, setUserData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [activeRec, setActiveRec] = useState(0);
 
     useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const res = await getHistory();
+                if (res.data && res.data.length > 0) setUserData(res.data[0]);
+            } catch (err) { console.error(err); }
+            finally { setLoading(false); }
+        };
         fetchData();
     }, []);
 
-    const fetchData = async () => {
-        try {
-            const res = await getHistory();
-            if (res.data && res.data.length > 0) {
-                // Use the most recent scan
-                setUserData(res.data[0]);
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    if (loading) return <div>Loading...</div>;
+    if (loading) return (
+        <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-6">
+            <div className="w-16 h-16 border-[6px] border-slate-50 border-t-indigo-500 rounded-full animate-spin"></div>
+            <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px]">Loading Studio Assets...</p>
+        </div>
+    );
 
     if (!userData) {
         return (
-            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
-                <h2 className="text-2xl font-bold mb-2">No Face Data Found</h2>
-                <p className="text-gray-500">Please run a Face Analysis first so we can recommend hairstyles!</p>
+            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-10 text-center">
+                <div className="w-24 h-24 bg-white shadow-xl rounded-3xl flex items-center justify-center text-indigo-500 text-4xl mb-8 border border-white">
+                    <FaShapes />
+                </div>
+                <h2 className="text-3xl font-black text-slate-900 mb-4 uppercase tracking-tight">Analysis Required</h2>
+                <p className="text-slate-500 max-w-sm mb-10 font-medium leading-relaxed">Please perform a face scan to unlock professional styling assets tailored to your profile.</p>
+                <button onClick={() => window.location.href = '/analyze'} className="px-10 py-4 bg-indigo-600 text-white font-black rounded-2xl uppercase tracking-widest text-xs hover:bg-slate-900 transition-all shadow-xl">
+                    Open VisionCore
+                </button>
             </div>
         );
     }
 
     const { face_shape, gender } = userData;
-    // Default to Female/Oval if data missing
-    const userGender = gender || "Female";
-    const userShape = face_shape || "Oval";
-
-    // Get Recommendations
-    const recs = (HAIR_RECOMMENDATIONS[userShape] || HAIR_RECOMMENDATIONS.Oval)[userGender] || [];
+    const recommendations = (HAIR_ASSETS[face_shape || "Oval"] || HAIR_ASSETS.Oval)[gender || "Female"] || [];
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6 animate-fade-in-up">
-            <div className="max-w-6xl mx-auto">
-                <div className="mb-10 text-center">
-                    <h1 className="text-4xl font-extrabold text-slate-800 mb-2">Hair Styling Studio 💇</h1>
-                    <p className="text-gray-500 text-lg">
-                        Personalized for your <span className="font-bold text-blue-600">{userShape}</span> face shape.
-                    </p>
-                </div>
+        <div className="min-h-screen bg-white text-slate-900">
+            {/* CLEAN MINIMAL HEADER */}
+            <div className="relative pt-24 pb-16 px-10 bg-slate-50">
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-10">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                            <span className="px-3 py-1 bg-indigo-600 text-white text-[10px] font-black rounded-lg uppercase tracking-widest">Studio Mode</span>
+                            <span className="text-slate-300 font-bold text-xs uppercase tracking-widest">Precision Style Lab</span>
+                        </div>
+                        <h1 className="text-6xl md:text-8xl font-black tracking-tight uppercase leading-none">
+                            High-End <span className="text-indigo-600">Cut</span>
+                        </h1>
+                        <p className="text-slate-500 text-lg font-medium max-w-xl">
+                            Expert recommendations for your <span className="text-slate-900 font-bold underline decoration-indigo-400 decoration-4 underline-offset-4">{face_shape || 'Oval'}</span> face shape.
+                        </p>
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-                    {recs.map((style, idx) => (
-                        <div key={idx} className="bg-white rounded-3xl shadow-xl overflow-hidden group border border-gray-100">
-                            <div className="h-[400px] overflow-hidden relative">
-                                <img
-                                    src={style.img}
-                                    alt={style.style}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                                />
-                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6 pt-20">
-                                    <h3 className="text-2xl font-bold text-white mb-1">{style.style}</h3>
+                    <div className="flex items-center gap-6">
+                        <div className="text-right">
+                            <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Morphology</div>
+                            <div className="text-3xl font-black text-slate-900">{face_shape || 'Oval'}</div>
+                        </div>
+                        <div className="w-16 h-16 bg-white shadow-2xl rounded-2xl flex items-center justify-center text-indigo-600 text-2xl border border-slate-100">
+                            <FaShapes />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <main className="max-w-7xl mx-auto py-24 px-10">
+
+                {/* LARGE FEATURED RECOMMENDATION */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center mb-32">
+                    <div className="relative group">
+                        <div className="absolute -inset-4 bg-indigo-50 rounded-[4rem] group-hover:bg-indigo-100 transition-colors duration-500"></div>
+                        <div className="relative aspect-[4/5] rounded-[3.5rem] overflow-hidden shadow-2xl bg-slate-100">
+                            <img
+                                src={recommendations[activeRec]?.img}
+                                alt="Style Preview"
+                                className="w-full h-full object-cover transform scale-100 group-hover:scale-110 transition-transform duration-[2s]"
+                                onError={(e) => e.target.src = "https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=800&auto=format&fit=crop"}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
+                            <div className="absolute bottom-12 left-12 right-12">
+                                <h3 className="text-white text-5xl font-black uppercase tracking-tighter leading-none mb-4">{recommendations[activeRec]?.style}</h3>
+                                <div className="flex items-center gap-2 text-indigo-400 bg-white/10 backdrop-blur-md w-fit px-4 py-2 rounded-xl">
+                                    <FaStar /> <span className="text-[10px] font-black uppercase tracking-widest text-white">Algorithmically Perfect Match</span>
                                 </div>
-                            </div>
-                            <div className="p-6">
-                                <p className="text-gray-500 leading-relaxed">{style.desc}</p>
                             </div>
                         </div>
-                    ))}
-                </div>
+                    </div>
 
-                {/* Hair Color Section */}
-                <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100 mb-12">
-                    <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                        🎨 Trending Hair Colors <span className="text-sm font-normal text-gray-500 ml-2">(Experiment!)</span>
-                    </h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {[
-                            { name: "Chestnut Brown", img: "https://images.unsplash.com/photo-1492106087820-71f1717878e2?auto=format&fit=crop&w=400&q=80", desc: "Warm & Natural" },
-                            { name: "Platinum Blonde", img: "https://images.unsplash.com/photo-1519699047748-40ba4428f61e?auto=format&fit=crop&w=400&q=80", desc: "Bold & Edgy" },
-                            { name: "Midnight Blue", img: "https://images.unsplash.com/photo-1625298075344-969460595304?auto=format&fit=crop&w=400&q=80", desc: "Deep & Mysterious" },
-                            { name: "Burgundy", img: "https://images.unsplash.com/photo-1580618672591-eb1c96b5007e?auto=format&fit=crop&w=400&q=80", desc: "Rich & Vibrant" }
-                        ].map((c, i) => (
-                            <div key={i} className="flex flex-col items-center gap-2 p-4 rounded-2xl hover:bg-gray-50 transition-colors cursor-pointer group">
-                                <div className="w-20 h-20 rounded-full shadow-md border-4 border-white group-hover:scale-110 transition-transform overflow-hidden">
-                                    <img src={c.img} alt={c.name} className="w-full h-full object-cover" />
-                                </div>
-                                <div className="text-center">
-                                    <div className="font-bold text-gray-800">{c.name}</div>
-                                    <div className="text-xs text-gray-400">{c.desc}</div>
-                                </div>
+                    <div className="space-y-12">
+                        <div className="space-y-4">
+                            <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 text-xl"><FaMagic /></div>
+                            <h2 className="text-4xl font-black uppercase tracking-tight">The <span className="text-indigo-600">Geometric</span> Verdict</h2>
+                            <p className="text-slate-500 text-xl font-medium leading-relaxed">
+                                {recommendations[activeRec]?.desc}
+                            </p>
+                        </div>
+
+                        <div className="space-y-6">
+                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Select Style Variant</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                {recommendations.map((item, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => setActiveRec(idx)}
+                                        className={`p-6 rounded-3xl border-2 text-left transition-all duration-300 ${activeRec === idx ? 'bg-indigo-600 border-indigo-600 text-white shadow-xl translate-x-1' : 'bg-white border-slate-100 text-slate-900 hover:border-indigo-200'}`}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-black uppercase tracking-tight">{item.style}</span>
+                                            {activeRec === idx && <FaChevronRight />}
+                                        </div>
+                                    </button>
+                                ))}
                             </div>
-                        ))}
+                        </div>
                     </div>
                 </div>
 
-                <div className="mt-12 bg-blue-50 p-6 rounded-2xl border border-blue-100 text-center text-blue-800">
-                    💡 <strong>Pro Tip:</strong> These styles are mathematically chosen to balance your features.
-                    Show these references to your stylist!
+                {/* CLINICAL INSIGHTS BAR */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                    <div className="p-10 rounded-[3rem] bg-slate-50 border border-slate-100 flex flex-col gap-6 group hover:translate-y-[-5px] transition-all">
+                        <div className="w-14 h-14 bg-white shadow-lg rounded-2xl flex items-center justify-center text-indigo-600 text-xl group-hover:scale-110 transition-transform"><FaInfoCircle /></div>
+                        <h4 className="text-slate-900 font-black uppercase text-xs tracking-widest leading-none">Symmetry Logic</h4>
+                        <p className="text-slate-500 text-sm font-medium leading-relaxed">Styles are prioritized using vertex mapping to create a clinical visual balance with your profile.</p>
+                    </div>
+                    <div className="p-10 rounded-[3rem] bg-slate-50 border border-slate-100 flex flex-col gap-6 group hover:translate-y-[-5px] transition-all">
+                        <div className="w-14 h-14 bg-white shadow-lg rounded-2xl flex items-center justify-center text-purple-600 text-xl group-hover:scale-110 transition-transform"><FaPalette /></div>
+                        <h4 className="text-slate-900 font-black uppercase text-xs tracking-widest leading-none">Color Match</h4>
+                        <p className="text-slate-500 text-sm font-medium leading-relaxed">Calculated light interaction based on your unique pigment density for the most radiant hair tones.</p>
+                    </div>
+                    <div className="p-10 rounded-[3rem] bg-slate-50 border border-slate-100 flex flex-col gap-6 group hover:translate-y-[-5px] transition-all">
+                        <div className="w-14 h-14 bg-white shadow-lg rounded-2xl flex items-center justify-center text-emerald-600 text-xl group-hover:scale-110 transition-transform"><FaCheckCircle /></div>
+                        <h4 className="text-slate-900 font-black uppercase text-xs tracking-widest leading-none">Stylist Ready</h4>
+                        <p className="text-slate-500 text-sm font-medium leading-relaxed">Export your morphological profile as a high-definition PDF reference for your next salon visit.</p>
+                    </div>
                 </div>
-            </div>
+
+            </main>
+
+            {/* MINIMAL FOOTER */}
+            <footer className="py-20 px-10 border-t border-slate-100 text-center">
+                <button className="px-12 py-5 bg-slate-900 text-white font-black rounded-2xl uppercase tracking-widest text-xs hover:bg-indigo-600 transition-all shadow-2xl">
+                    Export Style Dossier
+                </button>
+            </footer>
         </div>
     );
 };
