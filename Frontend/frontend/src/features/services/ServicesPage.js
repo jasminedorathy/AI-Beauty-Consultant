@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { FaFemale, FaMale, FaSpa, FaLeaf, FaGem, FaTint, FaCalendarAlt, FaClock, FaUser, FaTimes, FaCheckCircle } from 'react-icons/fa';
+import { FaFemale, FaMale, FaSpa, FaLeaf, FaGem, FaTint, FaCalendarAlt, FaClock, FaUser, FaTimes, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
+import { bookAppointment } from '../../services/appointmentApi';
 
 const SERVICE_DATA = {
     Female: {
@@ -79,21 +80,45 @@ const ServicesPage = () => {
         time: ''
     });
 
-    const handleBook = (service) => {
-        setSelectedService(service);
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    const handleBook = (category, service) => {
+        setSelectedService({ ...service, category });
         setIsBookingModalOpen(true);
         setBookingRef(null);
+        setError(null);
     };
 
-    const handleConfirmBooking = (e) => {
+    const handleConfirmBooking = async (e) => {
         e.preventDefault();
-        // Simulate API call
-        const ref = 'BK-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-        setBookingRef(ref);
-        setTimeout(() => {
-            setIsBookingModalOpen(false);
-            setBookingData({ name: '', date: '', time: '' });
-        }, 3000);
+        setLoading(true);
+        setError(null);
+
+        try {
+            const payload = {
+                service_name: selectedService.name,
+                customer_name: bookingData.name,
+                appointment_date: bookingData.date,
+                appointment_time: bookingData.time,
+                category: selectedService.category,
+                gender: activeTab
+            };
+
+            const result = await bookAppointment(payload);
+            setBookingRef(result.booking_ref);
+
+            setTimeout(() => {
+                setIsBookingModalOpen(false);
+                setBookingData({ name: '', date: '', time: '' });
+                setBookingRef(null);
+            }, 5000);
+        } catch (err) {
+            console.error('Booking failed:', err);
+            setError(err.response?.data?.detail || 'Booking failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -158,7 +183,7 @@ const ServicesPage = () => {
                                         {svc.desc}
                                     </p>
                                     <button
-                                        onClick={() => handleBook(svc)}
+                                        onClick={() => handleBook(category, svc)}
                                         className="text-sm font-semibold text-blue-500 hover:text-blue-700 flex items-center gap-1 group-hover:translate-x-1 transition-transform"
                                     >
                                         Book Now →
@@ -185,8 +210,16 @@ const ServicesPage = () => {
                         </div>
 
                         <div className="p-8">
+                            {error && (
+                                <div className="mb-6 p-4 bg-red-50 border-2 border-red-100 rounded-xl flex items-start gap-3 text-red-700 animate-shake">
+                                    <FaExclamationCircle className="mt-1 flex-shrink-0" />
+                                    <p className="text-sm font-medium">{error}</p>
+                                </div>
+                            )}
+
                             {!bookingRef ? (
                                 <form onSubmit={handleConfirmBooking} className="space-y-6">
+                                    {/* ... rest of the form ... */}
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                             <FaUser className="text-teal-500" /> Full Name
@@ -210,6 +243,7 @@ const ServicesPage = () => {
                                                 type="date"
                                                 value={bookingData.date}
                                                 onChange={(e) => setBookingData({ ...bookingData, date: e.target.value })}
+                                                min={new Date().toISOString().split('T')[0]}
                                                 className="w-full px-4 py-3 border-2 border-gray-100 rounded-xl focus:border-teal-500 transition-all outline-none"
                                             />
                                         </div>
@@ -225,18 +259,28 @@ const ServicesPage = () => {
                                             >
                                                 <option value="">Select Time</option>
                                                 <option value="10:00 AM">10:00 AM</option>
+                                                <option value="11:00 AM">11:00 AM</option>
                                                 <option value="12:00 PM">12:00 PM</option>
+                                                <option value="01:00 PM">01:00 PM</option>
                                                 <option value="02:00 PM">02:00 PM</option>
+                                                <option value="03:00 PM">03:00 PM</option>
                                                 <option value="04:00 PM">04:00 PM</option>
+                                                <option value="05:00 PM">05:00 PM</option>
                                                 <option value="06:00 PM">06:00 PM</option>
                                             </select>
                                         </div>
                                     </div>
                                     <button
                                         type="submit"
-                                        className="w-full py-4 bg-gradient-to-r from-teal-600 to-blue-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
+                                        disabled={loading}
+                                        className={`w-full py-4 bg-gradient-to-r from-teal-600 to-blue-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                                     >
-                                        Confirm Booking
+                                        {loading ? (
+                                            <>
+                                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                Processing...
+                                            </>
+                                        ) : 'Confirm Booking'}
                                     </button>
                                 </form>
                             ) : (
@@ -248,7 +292,7 @@ const ServicesPage = () => {
                                         <p className="font-mono text-xl font-bold text-teal-600">{bookingRef}</p>
                                     </div>
                                     <p className="text-gray-500 text-sm italic">
-                                        We'll see you at {bookingData.time} on {bookingData.date}.
+                                        We've saved your spot for {bookingData.time} on {bookingData.date}.
                                     </p>
                                 </div>
                             )}
