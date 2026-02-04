@@ -132,7 +132,7 @@ async def get_pricing():
             {
                 "name": "Normal",
                 "price": 0,
-                "currency": "USD",
+                "currency": "INR",
                 "period": "forever",
                 "features": list(NORMAL_FEATURES.values()),
                 "limits": {
@@ -143,8 +143,8 @@ async def get_pricing():
             },
             {
                 "name": "Premium Monthly",
-                "price": 9.99,
-                "currency": "USD",
+                "price": 799,
+                "currency": "INR",
                 "period": "month",
                 "duration_days": 30,
                 "features": list(PREMIUM_FEATURES.values()),
@@ -157,8 +157,8 @@ async def get_pricing():
             },
             {
                 "name": "Premium Yearly",
-                "price": 99.99,
-                "currency": "USD",
+                "price": 7999,
+                "currency": "INR",
                 "period": "year",
                 "duration_days": 365,
                 "features": list(PREMIUM_FEATURES.values()),

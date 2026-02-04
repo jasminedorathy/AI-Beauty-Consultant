@@ -98,8 +98,8 @@ const PremiumPage = () => {
             {/* Success/Error Message */}
             {message && (
                 <div className={`max-w-4xl mx-auto mb-8 p-4 rounded-xl ${message.includes('Success') || message.includes('upgraded')
-                        ? 'bg-green-50 border-2 border-green-500 text-green-800'
-                        : 'bg-red-50 border-2 border-red-500 text-red-800'
+                    ? 'bg-green-50 border-2 border-green-500 text-green-800'
+                    : 'bg-red-50 border-2 border-red-500 text-red-800'
                     }`}>
                     <p className="font-semibold text-center">{message}</p>
                 </div>
@@ -122,15 +122,15 @@ const PremiumPage = () => {
 
                         {/* Plan Header */}
                         <div className={`p-8 ${plan.popular
-                                ? 'bg-gradient-to-br from-purple-600 to-pink-600 text-white'
-                                : 'bg-gradient-to-br from-gray-50 to-gray-100'
+                            ? 'bg-gradient-to-br from-purple-600 to-pink-600 text-white'
+                            : 'bg-gradient-to-br from-gray-50 to-gray-100'
                             }`}>
                             <h3 className={`text-2xl font-bold mb-2 ${plan.popular ? 'text-white' : 'text-gray-800'}`}>
                                 {plan.name}
                             </h3>
                             <div className="flex items-baseline gap-2">
                                 <span className={`text-5xl font-extrabold ${plan.popular ? 'text-white' : 'text-gray-900'}`}>
-                                    ${plan.price}
+                                    {plan.currency === 'INR' ? '₹' : '$'}{plan.price}
                                 </span>
                                 <span className={`text-lg ${plan.popular ? 'text-purple-100' : 'text-gray-500'}`}>
                                     /{plan.period}
@@ -184,8 +184,8 @@ const PremiumPage = () => {
                                     onClick={() => handleUpgrade(plan.duration_days)}
                                     disabled={upgrading}
                                     className={`w-full py-4 rounded-xl font-bold text-lg transition-all shadow-lg ${plan.popular
-                                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:scale-105'
-                                            : 'bg-gradient-to-r from-gray-700 to-gray-800 text-white hover:scale-105'
+                                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:scale-105'
+                                        : 'bg-gradient-to-r from-gray-700 to-gray-800 text-white hover:scale-105'
                                         } ${upgrading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     {upgrading ? 'Processing...' : `Upgrade Now (Demo)`}

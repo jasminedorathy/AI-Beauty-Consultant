@@ -749,7 +749,7 @@ const SettingsPage = () => {
                                     <div className="flex justify-between items-center mb-3">
                                         <label className="text-sm font-semibold text-gray-700">Maximum Price</label>
                                         <span className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                                            ${priceRange[1]}
+                                            ₹{priceRange[1]}
                                         </span>
                                     </div>
                                     <input
