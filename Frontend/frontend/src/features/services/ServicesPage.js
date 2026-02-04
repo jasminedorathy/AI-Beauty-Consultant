@@ -5,22 +5,31 @@ const SERVICE_DATA = {
     Female: {
         "Signature Combos": [
             { name: "Total Radiance Package", price: "₹2,999", desc: "Pearl Facial + Hair Spa + Threading (Save ₹500)." },
-            { name: "Bridal Glow Essentials", price: "₹5,500", desc: "Gold Facial + Body Polishing + Premium Mani-Pedi." }
+            { name: "Bridal Glow Essentials", price: "₹5,500", desc: "Gold Facial + Body Polishing + Premium Mani-Pedi." },
+            { name: "Glass Skin Ritual", price: "₹4,200", desc: "Double Cleanse + Hydra Facial + Sheet Mask + LED therapy." }
         ],
         "Glow & Brightening": [
             { name: "Oxygen Facial", price: "₹1,500", desc: "Infuses pure oxygen for an instant, radiant glow." },
             { name: "Pearl Whitening Facial", price: "₹2,200", desc: "Polishes skin surface for a porcelain finish." },
-            { name: "24K Gold Facial", price: "₹3,200", desc: "Luxury anti-aging treatment for elasticity." }
+            { name: "24K Gold Facial", price: "₹3,200", desc: "Luxury anti-aging treatment for elasticity." },
+            { name: "Vitamin C Radiance", price: "₹1,800", desc: "High-potency antioxidant treatment for sun-damaged skin." }
         ],
         "Acne & Detox": [
             { name: "Herbal Face Cleanup", price: "₹655", desc: "Neem and Tulsi fast-acting cleanup for breakouts." },
             { name: "Advanced Acne Repair", price: "₹1,800", desc: "Targeted clinical facial for persistent acne." },
-            { name: "Mattifying Clean-up", price: "₹600", desc: "Controls shine and tightens pores." }
+            { name: "Mattifying Clean-up", price: "₹600", desc: "Controls shine and tightens pores." },
+            { name: "Urban Defense Facial", price: "₹2,100", desc: "Shields skin from pollutants and removes deep-seated grime." }
         ],
-        "Hydration & Indulgence": [
+        "Hydration & Rejuvenation": [
             { name: "Honey & Milk Hydration", price: "₹1,600", desc: "Classic hydration for soft, supple skin." },
             { name: "Choco-Divine Facial", price: "₹2,200", desc: "Antioxidant-rich cocoa butter treatment for deep moisture." },
-            { name: "Collagen Boost", price: "₹3,500", desc: "Firms sagging skin and reduces fine lines." }
+            { name: "Collagen Boost", price: "₹3,500", desc: "Firms sagging skin and reduces fine lines." },
+            { name: "Hyaluronic Deep Sea", price: "₹2,800", desc: "Ultra-hydrating treatment using concentrated marine extracts." }
+        ],
+        "Clinical & Advanced": [
+            { name: "Retinol Renewal", price: "₹3,800", desc: "Targeted clinical facial to reduce fine lines and visible pores." },
+            { name: "Blue Light Protection", price: "₹1,400", desc: "Neutralizes digital screen damage and refreshes tired skin." },
+            { name: "Derma-Peel Expert", price: "₹2,500", desc: "Chemical exfoliation for deep pigmentation and scarring." }
         ],
         "Hair & Body": [
             { name: "Keratin Protect", price: "₹1,720", desc: "Smooths frizz and adds manageable shine." },
@@ -29,24 +38,32 @@ const SERVICE_DATA = {
         ]
     },
     Male: {
-        "Combos": [
+        "Executive Combos": [
             { name: "The Gentleman's Cut & Detox", price: "₹999", desc: "Haircut + Charcoal De-Tan + Beard Trim." },
-            { name: "Wedding Ready Groom", price: "₹4,500", desc: "Gold Facial + Manicure + Pedicure + Hair Spa." }
+            { name: "Wedding Ready Groom", price: "₹4,500", desc: "Gold Facial + Manicure + Pedicure + Hair Spa." },
+            { name: "Boardroom Prep", price: "₹1,800", desc: "Express Cleanup + Eyebrow Grooming + Relaxing Head Massage." }
         ],
         "Detox & Oil Control": [
             { name: "Herbal Face Cleanup", price: "₹655", desc: "Antiseptic treatment to clear active acne." },
             { name: "Charcoal De-Tan", price: "₹500", desc: "Activated charcoal mask to absorb oil and pollution." },
-            { name: "Oil Control Clean-up", price: "₹545", desc: "Deep pore cleansing to remove excess sebum." }
+            { name: "Oil Control Clean-up", price: "₹545", desc: "Deep pore cleansing to remove excess sebum." },
+            { name: "Volcanic Ash Detox", price: "₹1,200", desc: "Intense mineral treatment for stubborn blackheads and dirt." }
+        ],
+        "Skin Recovery": [
+            { name: "Sports Recovery Facial", price: "₹1,400", desc: "Deep cooling treatment for skin exposed to sun and sweat." },
+            { name: "Sun Damage Repair", price: "₹1,600", desc: "Reverses intense tanning and repairs UV DNA damage." },
+            { name: "Anti-Fatigue Therapy", price: "₹1,100", desc: "Instant recharge for stressed, dull, and caffeine-tired skin." }
         ],
         "Grooming & Glow": [
             { name: "Oxygen Facial", price: "₹1,500", desc: "Infuses pure oxygen for an instant, radiant glow." },
             { name: "Global Gold Facial", price: "₹3,000", desc: "Premium radiance treatment for grooms." },
-            { name: "Skin Lightening Cleanup", price: "₹730", desc: "Reduces marks and balances skin tone." }
+            { name: "Skin Lightening Cleanup", price: "₹730", desc: "Reduces marks and balances skin tone." },
+            { name: "Beard & Skin Therapy", price: "₹850", desc: "Specialized care for the skin under the beard to prevent itch." }
         ],
-        "Hair & Texture": [
+        "Clinical & Texture": [
             { name: "Anti-Dandruff Treatment", price: "₹1,210", desc: "Clinical treatment to clear scalp buildup." },
-            { name: "L'Oreal Hair Spa", price: "₹845", desc: "Relaxing massage and mask for hair vitality." },
-            { name: "Crystal Microdermabrasion", price: "₹2,500", desc: "Resurfacing treatment for acne scars." }
+            { name: "Crystal Microderm", price: "₹2,500", desc: "Resurfacing treatment for deep acne scars and texture." },
+            { name: "Digital Detox Facial", price: "₹1,200", desc: "Protects against HEV (Blue Light) from digital screen exposure." }
         ]
     }
 };
