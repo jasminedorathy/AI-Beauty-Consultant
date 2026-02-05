@@ -85,11 +85,11 @@ const ResultCard = ({ data, image, annotatedImage }) => {
 
             {/* LEFT: VISUAL DIAGNOSTICS */}
             <div className="lg:col-span-12 xl:col-span-5 space-y-6">
-              <div className="group relative rounded-3xl overflow-hidden bg-slate-100 aspect-[4/3] sm:aspect-square shadow-inner transition-all duration-500 hover:shadow-2xl border-4 border-slate-50">
+              <div className="group relative rounded-3xl overflow-hidden bg-slate-900 aspect-[4/3] sm:aspect-square shadow-inner transition-all duration-500 hover:shadow-2xl border-4 border-slate-50 flex items-center justify-center">
                 <img
                   src={showAnnotated && annotatedImage ? annotatedImage : image}
                   alt="Diagnostic Capture"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  className="max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-105"
                 />
 
                 {/* Image Toggle Overlays */}

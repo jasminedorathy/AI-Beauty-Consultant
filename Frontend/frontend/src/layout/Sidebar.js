@@ -117,6 +117,9 @@ const Sidebar = () => {
         <div className="animate-fade-in-up animation-delay-800">
           <NavItem to="/dashboard/nail-styling" icon={<FaPaintBrush />} label="Nail Studio" badge="NEW" />
         </div>
+        <div className="animate-fade-in-up animation-delay-850">
+          <NavItem to="/dashboard/virtual-studio" icon={<FaUserCircle />} label="Vision Studio" badge="AR" />
+        </div>
 
         <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-4 mb-2 mt-6 animate-fade-in-up animation-delay-900">
           Insights

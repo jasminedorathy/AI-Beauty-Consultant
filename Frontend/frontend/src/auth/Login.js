@@ -23,7 +23,7 @@ const Login = () => {
     try {
       const res = await apiLogin({ email, password });
       // Backend returns { access_token, token_type }
-      login(res.data.access_token);
+      login(res.access_token);
       // Store email for navbar display
       localStorage.setItem('email', email);
       navigate("/dashboard");

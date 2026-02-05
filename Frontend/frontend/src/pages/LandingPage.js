@@ -115,10 +115,10 @@ const LandingPage = () => {
                         {/* Feature 3 */}
                         <div className="glass-card p-8 rounded-3xl card-hover">
                             <div className="text-5xl mb-4">💄</div>
-                            <h3 className="text-2xl font-bold mb-3">Color Matching</h3>
+                            <h3 className="text-2xl font-bold mb-3">Vision Studio AR</h3>
                             <p className="text-gray-600">
-                                CIEDE2000 professional color science. Find your perfect foundation
-                                shade and makeup colors with 92% accuracy.
+                                Real-time Virtual Try-On. Experiment with makeup shades and hair colors
+                                instantly using our high-precision AR mirror.
                             </p>
                         </div>
                     </div>

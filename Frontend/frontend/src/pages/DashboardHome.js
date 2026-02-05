@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { FaCamera, FaMagic, FaCut, FaPaintBrush, FaChartLine, FaCheckCircle, FaExclamationTriangle, FaInfoCircle, FaCrown, FaArrowUp } from 'react-icons/fa';
 import { getUserRole, getUserStats } from '../services/premiumApi';
+import { getHistory } from '../services/api';
 
 const DashboardHome = () => {
   const [userRole, setUserRole] = useState(null);
@@ -11,9 +12,16 @@ const DashboardHome = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const [role, stats] = await Promise.all([getUserRole(), getUserStats()]);
+        const [role, stats, history] = await Promise.all([
+          getUserRole(),
+          getUserStats(),
+          getHistory()
+        ]);
         setUserRole(role);
         setUserStats(stats);
+        // Take top 3 most recent
+        const historyArray = Array.isArray(history) ? history : [];
+        setRecentAnalyses(historyArray.slice(0, 3));
       } catch (err) {
         console.error('Failed to fetch user data:', err);
       } finally {
@@ -23,12 +31,7 @@ const DashboardHome = () => {
     fetchUserData();
   }, []);
 
-  // Recent Analysis Data
-  const recentAnalyses = [
-    { date: '2 days ago', skinType: 'Combination', concerns: ['Dark Spots', 'Fine Lines'], status: 'completed' },
-    { date: '1 week ago', skinType: 'Oily', concerns: ['Acne', 'Large Pores'], status: 'completed' },
-    { date: '2 weeks ago', skinType: 'Dry', concerns: ['Dehydration'], status: 'completed' },
-  ];
+  const [recentAnalyses, setRecentAnalyses] = useState([]);
 
   // Skin Health Insights
   const skinInsights = [
@@ -286,22 +289,26 @@ const DashboardHome = () => {
                   <FaMagic className="text-purple-600 text-xl" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-800">{analysis.skinType} Skin Analysis</p>
-                  <p className="text-sm text-gray-500">{analysis.date}</p>
+                  <p className="font-semibold text-gray-800">{(analysis.face_shape || "New") + " Face Analysis"}</p>
+                  <p className="text-sm text-gray-500">{analysis.date || "Just now"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex gap-2">
-                  {analysis.concerns.map((concern, i) => (
-                    <span key={i} className="text-xs bg-purple-50 text-purple-700 px-3 py-1 rounded-full font-medium">
-                      {concern}
-                    </span>
-                  ))}
+                  <span className="text-xs bg-purple-50 text-purple-700 px-3 py-1 rounded-full font-medium">
+                    {analysis.gender || "Analyzed"}
+                  </span>
                 </div>
                 <FaCheckCircle className="text-green-500 text-xl" />
               </div>
             </div>
           ))}
+          {recentAnalyses.length === 0 && (
+            <div className="text-center py-10 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+              <p className="text-gray-400">No recent scans found.</p>
+              <Link to="/dashboard/analyze" className="text-purple-600 font-bold text-sm mt-2 block">Start your first scan →</Link>
+            </div>
+          )}
         </div>
       </div>
     </div>

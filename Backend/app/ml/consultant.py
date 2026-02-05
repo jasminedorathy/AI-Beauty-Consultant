@@ -1,5 +1,6 @@
 def generate_consultation(face_shape, skin_scores, gender="Female", image=None, landmarks=None,
-                         skin_tone=None, undertone=None, eye_color=None, hair_color=None, season=None):
+                         skin_tone=None, undertone=None, eye_color=None, hair_color=None, 
+                         season=None, hair_properties=None):
     """
     Acts as a Beauty Consultant to generate personalized advice.
     Now includes comprehensive color analysis.
@@ -149,6 +150,26 @@ def generate_consultation(face_shape, skin_scores, gender="Female", image=None, 
                  final_recs.append(f"💡 **Style Tip**: A fuller beard at the chin balances a {face_shape} face.")
              else:
                  final_recs.append(f"💡 **Style Tip**: Avoid heavy bangs; try side-swept looks to balance {face_shape} width.")
+
+    # 6.5 ADVANCED HAIR CONSULTATION (NEW)
+    if hair_properties:
+        final_recs.append("\n🔬 **Hair Morphology Report**:")
+        density = hair_properties.get("density", "Normal")
+        texture = hair_properties.get("texture", "Straight")
+        recession_status = hair_properties.get("recession_status", "Optimal")
+        curl_pattern = hair_properties.get("curl_pattern", "Unknown")
+        
+        final_recs.append(f"- **Density**: {density}")
+        final_recs.append(f"- **Pattern**: {curl_pattern}")
+        final_recs.append(f"- **Hairline**: {recession_status}")
+        
+        # Actionable Advice
+        if "Recession" in recession_status:
+            final_recs.append("💊 **Hair Care**: Consider Biotin supplements and caffeine-infused shampoos to stimulate follicles.")
+        if "Coily" in curl_pattern or "Curly" in curl_pattern:
+            final_recs.append("🧴 **Hair Care**: Use sulfate-free co-washes and leave-in creams to maintain moisture for your pattern.")
+        elif "Fine" in density:
+            final_recs.append("🧴 **Hair Care**: Use volumizing mouses and avoid heavy oils that weigh down fine hair.")
 
     # 6. FOUNDATION SHADE MATCHING (CIEDE2000)
     if image is not None and landmarks is not None:

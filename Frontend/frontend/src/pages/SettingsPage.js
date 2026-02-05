@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaUser, FaBell, FaLock, FaPalette, FaSave, FaCamera, FaChartLine, FaShieldAlt, FaClock, FaGlobe, FaTimes, FaDownload, FaExclamationTriangle, FaBullseye, FaShoppingCart, FaHistory, FaRobot, FaUniversalAccess, FaLink, FaUsers, FaCreditCard, FaCode, FaCheck, FaQrcode, FaKey, FaCrown } from 'react-icons/fa';
+import { FaUser, FaBell, FaLock, FaPalette, FaSave, FaCamera, FaChartLine, FaShieldAlt, FaClock, FaGlobe, FaTimes, FaDownload, FaExclamationTriangle, FaBullseye, FaShoppingCart, FaRobot, FaUniversalAccess, FaCreditCard, FaCode, FaCheck, FaKey, FaCrown } from 'react-icons/fa';
 import { getSettings, updateSettings, changePassword, deleteAccount, enable2FA, verify2FA, disable2FA, get2FAStatus } from '../services/api';
 import { getUserRole, cancelSubscription } from '../services/premiumApi';
 import jsPDF from 'jspdf';

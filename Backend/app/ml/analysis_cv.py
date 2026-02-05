@@ -472,16 +472,44 @@ def analyze_skin_cv(image, landmarks):
     }
 
 def generate_annotated_image(image, landmarks, gender=None):
+    """
+    Generates a professional, clinical-grade diagnostic overlay.
+    Uses ultra-fine geometry mapping and subtle chromatic indicators.
+    """
     annotated = image.copy()
+    overlay = annotated.copy()
     h, w, _ = annotated.shape
-    color = (255, 100, 0) if gender == "Male" else (255, 0, 255)
-    def get_pt(idx): return (int(landmarks[idx].x * w), int(landmarks[idx].y * h))
-    jaw_pts = [172, 152, 397]
+    
+    # 🎨 PROFESSIONAL COLOR PALETTE (Luxury Tech)
+    # Slate Blue for structure, Gold for T-Zone, Emerald for Health
+    PRIMARY_COLOR = (240, 180, 60) if gender == "Male" else (220, 100, 255) # Soft Blue vs Soft Pink
+    ACCENT_COLOR = (50, 230, 255) # Cyan Glow
+    
+    def get_pt(idx): 
+        return (int(landmarks[idx].x * w), int(landmarks[idx].y * h))
+    
+    # 1. DRAW ARCHITECTURAL JAWLINE (Subtle Flow)
+    jaw_pts = [172, 58, 132, 152, 282, 331, 397] # More points for smoothness
     for i in range(len(jaw_pts)-1):
-        cv2.line(annotated, get_pt(jaw_pts[i]), get_pt(jaw_pts[i+1]), color, 3) 
+        p1, p2 = get_pt(jaw_pts[i]), get_pt(jaw_pts[i+1])
+        cv2.line(overlay, p1, p2, PRIMARY_COLOR, 1, cv2.LINE_AA)
+        # Add tiny nodes
+        cv2.circle(overlay, p1, 2, PRIMARY_COLOR, -1, cv2.LINE_AA)
+    
+    # 2. DRAW T-ZONE SCANNER (Architecture)
     tzone_indices = [103, 104, 105, 9, 334, 333, 332, 297, 338, 10, 109, 67]
     pts = np.array([get_pt(i) for i in tzone_indices], dtype=np.int32).reshape((-1, 1, 2))
-    cv2.polylines(annotated, [pts], True, (0, 255, 255), 1, cv2.LINE_AA) 
+    cv2.polylines(overlay, [pts], True, ACCENT_COLOR, 1, cv2.LINE_AA)
+    
+    # 3. DRAW EYE FRAME (Precision Points)
+    eye_indices = [33, 133, 159, 145, 263, 362, 386, 374]
+    for idx in eye_indices:
+        cv2.circle(overlay, get_pt(idx), 1, (255, 255, 255), -1, cv2.LINE_AA)
+
+    # 4. BLEND OVERLAY (Alpha Transparency for Professional Look)
+    alpha = 0.4
+    cv2.addWeighted(overlay, alpha, annotated, 1 - alpha, 0, annotated)
+    
     return annotated
 
 def calculate_facial_symmetry(landmarks, width, height):
@@ -620,17 +648,106 @@ def detect_undereye_concerns(image, landmarks):
         return {"dark_circles": 0.0, "puffiness": "Minimal", "concerns": "Clear"}
 
 def detect_hair_properties(image, landmarks):
+    """
+    Advanced Hair Morphology Analysis:
+    1. Hairline Recession Index (Geometric Proportions)
+    2. Curl Pattern Detection (FFT Frequency Analysis)
+    3. Hair Density & Thickness (Pixel-Ratio Mapping)
+    """
     try:
         h, w, _ = image.shape
-        top_y = int(landmarks[10].y * h)
-        if top_y < 50: return {"density": "Medium", "texture": "Straight"}
-        crown_patch = image[max(0, top_y-150):top_y, int(w*0.25):int(w*0.75)]
-        if crown_patch.size == 0: return {"density": "Medium", "texture": "Straight"}
+        # Reference points: Top of forehead (10), Nose bridge (168), Chin (152)
+        top_head = landmarks[10]
+        eye_mid = landmarks[168]
+        chin = landmarks[152]
+        
+        # --- 1. HAIRLINE RECESSION INDEX ---
+        # Using Rule of Thirds calibration. 
+        # Forehead height (10 to 168) vs Total Face Height (10 to 152)
+        face_height = abs(chin.y - top_head.y) * h
+        forehead_height = abs(top_head.y - eye_mid.y) * h
+        
+        recession_ratio = forehead_height / (face_height + 1e-6)
+        
+        # Clinical Calibration:
+        # Standard: 0.30 - 0.35
+        # High Forehead: 0.36 - 0.40
+        # Receding: > 0.42
+        recession_score = np.clip((recession_ratio - 0.30) * 500, 0, 100)
+        
+        status = "Optimal" if recession_score < 25 else \
+                 "High Forehead" if recession_score < 50 else \
+                 "Early Recession" if recession_score < 75 else "Significant Recession"
+
+        # --- 2. DENSITY & CURL PATTERN (SAMPLING) ---
+        top_y = int(top_head.y * h)
+        
+        # If the face is too high in the frame, we fallback to safer estimates
+        if top_y < 40:
+             return {
+                "density": "Medium",
+                "texture": "Straight",
+                "recession_index": round(float(recession_score), 1),
+                "recession_status": status,
+                "curl_pattern": "Type 1 (Straight)"
+            }
+
+        # Sample crown area (above forehead)
+        crown_y1 = max(0, top_y - 120)
+        crown_patch = image[crown_y1:top_y, int(w*0.3):int(w*0.7)]
+        
+        if crown_patch.size == 0:
+             return {"density": "Medium", "texture": "Straight", "recession_index": 0.0}
+
         gray = cv2.cvtColor(crown_patch, cv2.COLOR_BGR2GRAY)
-        std_val = np.std(gray)
-        density = "High" if std_val > 55 else "Medium" if std_val > 30 else "Fine"
-        lap_var = cv2.Laplacian(gray, cv2.CV_64F).var()
-        texture = "Curly" if lap_var > 600 else "Wavy" if lap_var > 250 else "Straight"
-        return {"density": density, "texture": texture}
-    except:
-        return {"density": "Medium", "texture": "Straight"}
+        
+        # Density Calculation (Edge Density Ratio)
+        edges = cv2.Canny(gray, 50, 150)
+        density_ratio = np.sum(edges > 0) / edges.size
+        
+        density_label = "High (Thick)" if density_ratio > 0.18 else \
+                        "Medium (Normal)" if density_ratio > 0.08 else "Fine (Thin)"
+
+        # Curl Pattern (2D FFT frequency distribution)
+        # Curly hair has a higher distribution of high-frequency components
+        f = np.fft.fft2(gray)
+        fshift = np.fft.fftshift(f)
+        magnitude_spectrum = 20 * np.log(np.abs(fshift) + 1)
+        
+        rows, cols = gray.shape
+        crow, ccol = rows//2 , cols//2
+        # Mask central DC component
+        magnitude_spectrum[crow-5:crow+5, ccol-5:ccol+5] = 0
+        hf_energy = np.mean(magnitude_spectrum)
+        
+        # Pattern Calibration (Type 1-4)
+        if hf_energy > 52:
+            curl_pattern = "Type 4 (Coily/Kinky)"
+            texture_label = "Coily"
+        elif hf_energy > 38:
+            curl_pattern = "Type 3 (Curly)"
+            texture_label = "Curly"
+        elif hf_energy > 22:
+            curl_pattern = "Type 2 (Wavy)"
+            texture_label = "Wavy"
+        else:
+            curl_pattern = "Type 1 (Straight)"
+            texture_label = "Straight"
+
+        return {
+            "density": density_label,
+            "texture": texture_label,
+            "recession_index": round(float(recession_score), 1),
+            "recession_status": status,
+            "curl_pattern": curl_pattern,
+            "health_score": round(100 - (recession_score * 0.4), 1)
+        }
+    except Exception as e:
+        print(f"⚠️ Hair Analysis Error: {e}")
+        return {
+            "density": "Medium", 
+            "texture": "Straight", 
+            "recession_index": 0.0, 
+            "recession_status": "Unknown",
+            "curl_pattern": "Type 1 (Straight)"
+        }

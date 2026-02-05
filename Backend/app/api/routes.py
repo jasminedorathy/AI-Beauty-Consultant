@@ -112,7 +112,7 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
             shape_name, skin_scores, gender, img, landmarks,
             skin_tone=skin_tone, undertone=undertone,
             eye_color=eye_color, hair_color=hair_color,
-            season=season
+            season=season, hair_properties=hair_props
         )
 
         # 5. Generate AI-Powered Personalized Tips (NEW)
@@ -126,7 +126,8 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
             undertone=undertone,
             eye_color=eye_color,
             hair_color=hair_color,
-            season=season
+            season=season,
+            hair_properties=hair_props
         )
         print(f"✨ Generated {len(personalized_tips)} personalized tips for user")
 
@@ -149,7 +150,7 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
             annotated_path = os.path.join("static/uploads", annotated_filename)
             cv2.imwrite(annotated_path, annotated_img)
 
-            base_url = "http://127.0.0.1:8000"
+            base_url = "http://localhost:8000"
             image_url = f"{base_url}/static/uploads/{filename}"
             annotated_image_url = f"{base_url}/static/uploads/{annotated_filename}"
 

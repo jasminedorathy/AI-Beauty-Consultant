@@ -18,7 +18,7 @@ def load_api_key():
     return None
 
 def generate_personalized_tips(face_shape, gender, skin_scores, skin_tone=None, undertone=None, 
-                               eye_color=None, hair_color=None, season=None):
+                               eye_color=None, hair_color=None, season=None, hair_properties=None):
     """
     Generate unique, personalized beauty tips using AI based on complete facial analysis.
     
@@ -61,6 +61,14 @@ def generate_personalized_tips(face_shape, gender, skin_scores, skin_tone=None, 
     - Acne Level: {acne*100:.0f}% (0=clear, 100=severe)
     - Oiliness: {oiliness*100:.0f}% (0=dry, 100=very oily)
     - Texture/Roughness: {texture*100:.0f}% (0=smooth, 100=rough)
+    """
+    
+    if hair_properties:
+        context += f"""
+    - Hair Density: {hair_properties.get('density')}
+    - Hair Texture: {hair_properties.get('texture')}
+    - Hairline Status: {hair_properties.get('recession_status')}
+    - Curl Pattern: {hair_properties.get('curl_pattern')}
     """
     
     if skin_tone and eye_color and hair_color:
@@ -166,10 +174,10 @@ def generate_personalized_tips(face_shape, gender, skin_scores, skin_tone=None, 
     
     # If all AI attempts fail, use intelligent fallback
     print("⚠️ All AI models failed, using enhanced fallback")
-    return generate_fallback_tips(face_shape, gender, skin_type, acne, oiliness, texture, season)
+    return generate_fallback_tips(face_shape, gender, skin_type, acne, oiliness, texture, season, hair_properties)
 
 
-def generate_fallback_tips(face_shape, gender, skin_type, acne, oiliness, texture, season=None):
+def generate_fallback_tips(face_shape, gender, skin_type, acne, oiliness, texture, season=None, hair_properties=None):
     """
     Generate personalized tips using rule-based logic when AI is unavailable.
     Still highly personalized based on the specific combination of features.
@@ -209,6 +217,15 @@ def generate_fallback_tips(face_shape, gender, skin_type, acne, oiliness, textur
     }
     if face_shape in face_shape_tips:
         tips.append(face_shape_tips[face_shape])
+    
+    # Tip 4.5: Advanced Hair Properties
+    if hair_properties:
+        if "Recession" in hair_properties.get('recession_status', ''):
+            tips.append("🛡️ To manage your hairline, avoid high-tension styles and use a scalp massager to promote blood flow to the follicles.")
+        if "Coily" in hair_properties.get('curl_pattern', ''):
+            tips.append("🌀 Your coily hair pattern is prone to dryness. Using the 'LOC' method (Liquid-Oil-Cream) will help lock in vital moisture.")
+        elif "Fine" in hair_properties.get('density', ''):
+            tips.append("💇 For fine hair density, look for 'texturizing' sprays rather than gels to add body without over-saturating the hair.")
     
     # Tip 5: Color Season (if available)
     if season:

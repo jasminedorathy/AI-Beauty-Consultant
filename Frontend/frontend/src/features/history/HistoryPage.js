@@ -13,7 +13,8 @@ const HistoryPage = () => {
   const fetchData = async () => {
     try {
       const res = await getHistory();
-      setHistory(res.data);
+      // res is now the direct array since api.js returns res.data
+      setHistory(Array.isArray(res) ? res : []);
     } catch (err) {
       console.error("History fetch failed", err);
     } finally {

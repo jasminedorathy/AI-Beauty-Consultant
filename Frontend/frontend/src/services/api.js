@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "http://localhost:8000";
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -19,13 +19,15 @@ api.interceptors.request.use(
 );
 
 // SIGNUP
-export const signup = (data) => {
-  return api.post("/api/auth/signup", data);
+export const signup = async (data) => {
+  const res = await api.post("/api/auth/signup", data);
+  return res.data;
 };
 
 // LOGIN
-export const login = (data) => {
-  return api.post("/api/auth/login", data);
+export const login = async (data) => {
+  const res = await api.post("/api/auth/login", data);
+  return res.data;
 };
 
 // ANALYZE
@@ -36,8 +38,9 @@ export const analyzeImage = async (formData) => {
 };
 
 // HISTORY
-export const getHistory = () => {
-  return api.get("/history");
+export const getHistory = async () => {
+  const res = await api.get("/history");
+  return res.data;
 };
 
 // CHAT

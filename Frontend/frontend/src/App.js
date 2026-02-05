@@ -15,6 +15,7 @@ import TrendsPage from "./features/history/TrendsPage";
 import LiveAnalyzePage from "./features/camera/LiveAnalyzePage";
 import HairStyling from "./features/styling/HairStyling";
 import NailStyling from "./features/styling/NailStyling";
+import VirtualStudio from "./features/styling/VirtualStudio";
 import ServicesPage from "./features/services/ServicesPage";
 import SettingsPage from "./pages/SettingsPage";
 import PremiumPage from "./pages/PremiumPage";
@@ -53,6 +54,7 @@ function App() {
             <Route path="trends" element={<TrendsPage />} />
             <Route path="hair-styling" element={<HairStyling />} />
             <Route path="nail-styling" element={<NailStyling />} />
+            <Route path="virtual-studio" element={<VirtualStudio />} />
             <Route path="services" element={<ServicesPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
