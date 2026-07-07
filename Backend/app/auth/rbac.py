@@ -83,7 +83,7 @@ def require_role(allowed_roles: List[str]):
     return decorator
 
 # --- AUDIT LOGGING ---
-from app.mongodb.collections import db
+from app.mongodb.collections import db, salons_collection
 
 def log_admin_action(admin_email: str, action: str, target_user: str = None, details: dict = None):
     audit_collection = db["audit_logs"]
@@ -219,10 +219,18 @@ def require_premium(current_user: dict = Depends(get_current_user)):
 def require_shop_owner(current_user: dict = Depends(get_current_user)):
     """Require shop_owner or admin role for B2B endpoints."""
     info = get_user_role_info(current_user["sub"])
-    if info["role"] not in [ROLE_ADMIN, "shop_owner"]:
+    if info["role"] == ROLE_ADMIN:
+        return current_user
+    if info["role"] != "shop_owner":
         raise HTTPException(
             status_code=403,
             detail="Access denied. This feature is only available to registered Shop Owners."
+        )
+    salon = salons_collection.find_one({"owner_user_id": current_user["sub"]})
+    if not salon or not salon.get("is_verified", False):
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Your salon must be verified before using partner features."
         )
     return current_user
 

@@ -56,6 +56,8 @@ def _get_owner_salon(current_user: dict) -> dict:
     salon = salons_collection.find_one({"owner_user_id": current_user.get("sub")})
     if not salon:
         raise HTTPException(status_code=404, detail="No salon found for this account")
+    if not salon.get("is_verified", False):
+        raise HTTPException(status_code=403, detail="Your salon must be verified before using partner features.")
     return salon
 
 
@@ -761,4 +763,3 @@ async def get_all_public_services(
         "limit":    limit,
         "services": paginated,
     }
-

@@ -122,9 +122,13 @@ def customer_signup(user: CustomerSignup):
             }
             user_collection.insert_one(user_doc)
             try:
-                send_otp_email(user.email.strip().lower(), otp)
+                delivered = send_otp_email(user.email.strip().lower(), otp)
             except Exception:
-                _log.warning("OTP email delivery failed for new customer signup (non-fatal)")
+                delivered = False
+            if not delivered:
+                user_collection.delete_one({"email": user.email.strip().lower(), "email_verified": False})
+                _log.warning("OTP email delivery failed for new customer signup")
+                raise HTTPException(status_code=503, detail="Could not send verification code. Please try again.")
         else:
             _log.info("Signup attempted for existing email (suppressed, anti-enumeration)")
 
@@ -173,9 +177,13 @@ def shop_owner_signup(user: ShopOwnerSignup):
             }
             user_collection.insert_one(user_doc)
             try:
-                send_otp_email(user.email.strip().lower(), otp)
+                delivered = send_otp_email(user.email.strip().lower(), otp)
             except Exception:
-                _log.warning("OTP email delivery failed for new shop owner signup (non-fatal)")
+                delivered = False
+            if not delivered:
+                user_collection.delete_one({"email": user.email.strip().lower(), "email_verified": False})
+                _log.warning("OTP email delivery failed for new shop owner signup")
+                raise HTTPException(status_code=503, detail="Could not send verification code. Please try again.")
         else:
             _log.info("Shop owner signup attempted for existing email (suppressed, anti-enumeration)")
 
@@ -406,9 +414,12 @@ def resend_otp(req: ResendOTPRequest):
             {"$set": {"verification_otp": otp, "otp_expiry": expiry}}
         )
         try:
-            send_otp_email(req.email.strip(), otp)
+            delivered = send_otp_email(req.email.strip(), otp)
         except Exception:
-            _log.warning("OTP email delivery failed during resend (non-fatal)")
+            delivered = False
+        if not delivered:
+            _log.warning("OTP email delivery failed during resend")
+            raise HTTPException(status_code=503, detail="Could not send verification code. Please try again.")
 
         return {"message": "A new verification code has been sent to your email."}
     except HTTPException:

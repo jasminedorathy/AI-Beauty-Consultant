@@ -8,6 +8,7 @@ router = APIRouter(prefix="/api/passport", tags=["Beauty Passport"])
 onboarding_col  = db["onboarding_profiles"]
 appointments_col = db["appointments"]
 analysis_col    = db["analysis_history"]
+salons_col      = db["salons"]
 
 
 def _build_passport(profile: dict) -> dict:
@@ -51,7 +52,17 @@ async def get_client_passport(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid booking ID")
 
-    booking = appointments_col.find_one({"_id": oid})
+    query = {"_id": oid}
+    if role != "admin":
+        salon = salons_col.find_one({
+            "owner_user_id": current_user.get("sub"),
+            "is_verified": True,
+        })
+        if not salon:
+            raise HTTPException(status_code=403, detail="Verified salon owner access required")
+        query["salon_id"] = salon.get("id")
+
+    booking = appointments_col.find_one(query)
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 

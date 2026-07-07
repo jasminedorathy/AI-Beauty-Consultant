@@ -76,6 +76,16 @@ def _enrich(salon: dict, user_lat: float = None, user_lon: float = None) -> dict
     return salon
 
 
+def _get_verified_owner_salon(current_user: dict) -> dict:
+    salon = salons_collection.find_one({
+        "owner_user_id": current_user.get("sub"),
+        "is_verified": True,
+    })
+    if not salon:
+        raise HTTPException(status_code=403, detail="Verified salon owner access required")
+    return salon
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # PUBLIC — Browse / Search Salons
 # ─────────────────────────────────────────────────────────────────────────────
@@ -306,17 +316,13 @@ async def get_wishlist(current_user: dict = Depends(get_current_user)):
 
 @router.get("/owner/my-salon")
 async def get_my_salon(current_user: dict = Depends(get_current_user)):
-    salon = salons_collection.find_one({"owner_user_id": current_user.get("sub")})
-    if not salon:
-        raise HTTPException(status_code=404, detail="No salon found for this account")
+    salon = _get_verified_owner_salon(current_user)
     return _enrich(salon)
 
 
 @router.put("/owner/update")
 async def update_my_salon(updates: SalonUpdate, current_user: dict = Depends(get_current_user)):
-    salon = salons_collection.find_one({"owner_user_id": current_user.get("sub")})
-    if not salon:
-        raise HTTPException(status_code=404, detail="No salon found for this account")
+    salon = _get_verified_owner_salon(current_user)
     update_data = {k: v for k, v in updates.dict().items() if v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -352,9 +358,7 @@ async def get_owner_bookings(
     page: int = Query(1, ge=1),
     limit: int = Query(50, le=200),
 ):
-    salon = salons_collection.find_one({"owner_user_id": current_user.get("sub")})
-    if not salon:
-        raise HTTPException(status_code=404, detail="No salon found for this account")
+    salon = _get_verified_owner_salon(current_user)
     query: dict = {"salon_id": salon["id"]}
     if date:
         query["appointment_date"] = date
@@ -379,9 +383,7 @@ async def update_booking_status(
 ):
     if status not in ["confirmed", "cancelled", "completed", "pending"]:
         raise HTTPException(status_code=400, detail="Invalid status")
-    salon = salons_collection.find_one({"owner_user_id": current_user.get("sub")})
-    if not salon:
-        raise HTTPException(status_code=404, detail="No salon found")
+    salon = _get_verified_owner_salon(current_user)
     result = slot_bookings_collection.update_one(
         {"id": booking_id, "salon_id": salon["id"]},
         {"$set": {"status": status, "updated_at": datetime.utcnow()}}
@@ -393,9 +395,7 @@ async def update_booking_status(
 
 @router.get("/owner/analytics")
 async def owner_analytics(current_user: dict = Depends(get_current_user)):
-    salon = salons_collection.find_one({"owner_user_id": current_user.get("sub")})
-    if not salon:
-        raise HTTPException(status_code=404, detail="No salon found")
+    salon = _get_verified_owner_salon(current_user)
     all_bookings = list(slot_bookings_collection.find({"salon_id": salon["id"]}))
     total     = len(all_bookings)
     confirmed = sum(1 for b in all_bookings if b.get("status") == "confirmed")
@@ -763,6 +763,7 @@ async def upload_salon_gallery(
     """Uploads multiple images for a salon gallery and returns their URLs."""
     if current_user["role"] != "shop_owner":
         raise HTTPException(status_code=403, detail="Only shop owners can upload gallery images")
+    _get_verified_owner_salon(current_user)
     
     # Salon gallery images are intentionally public (customers need to browse them).
     # They are stored under static/public/ which is served by the public StaticFiles
