@@ -9,15 +9,23 @@ import base64
 import pytest
 
 
-def _import_storage():
-    from app.utils import image_storage
-    return image_storage
+def _import_storage_no_cloudinary():
+    """Import image_storage with Cloudinary env vars cleared so the b64 fallback is active."""
+    import importlib
+    import sys
+    for var in ("CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"):
+        os.environ.pop(var, None)
+    # Pop from sys.modules so importlib.import_module re-executes the module
+    # code with the cleared env vars. Using `from app.utils import` would return
+    # the cached attr from the parent package dict without a fresh execution.
+    sys.modules.pop("app.utils.image_storage", None)
+    return importlib.import_module("app.utils.image_storage")
 
 
 # ── Base64 fallback (no Cloudinary configured) ────────────────────────────────
 
 def test_store_returns_b64_key_without_cloudinary():
-    storage = _import_storage()
+    storage = _import_storage_no_cloudinary()
     img_bytes = b"\xff\xd8\xff" + b"\x00" * 100  # fake JPEG header
     key = storage.store_image(img_bytes, "user@example.com", "raw")
     assert key.startswith("b64:")
@@ -26,7 +34,7 @@ def test_store_returns_b64_key_without_cloudinary():
 
 
 def test_get_image_url_converts_b64_key_to_data_uri():
-    storage = _import_storage()
+    storage = _import_storage_no_cloudinary()
     img_bytes = b"\xff\xd8\xff" + b"\x00" * 50
     key = storage.store_image(img_bytes, "user@example.com", "annotated")
     url = storage.get_image_url(key)
@@ -38,19 +46,19 @@ def test_get_image_url_converts_b64_key_to_data_uri():
 
 def test_get_image_url_handles_legacy_data_uri():
     """Old DB records stored full data URIs — get_image_url must pass them through."""
-    storage = _import_storage()
+    storage = _import_storage_no_cloudinary()
     legacy = "data:image/jpeg;base64," + base64.b64encode(b"fake").decode()
     assert storage.get_image_url(legacy) == legacy
 
 
 def test_delete_image_noop_for_b64_key():
     """delete_image must not raise for base64 keys (nothing to delete remotely)."""
-    storage = _import_storage()
+    storage = _import_storage_no_cloudinary()
     storage.delete_image("b64:AAAA")  # should not raise
 
 
 def test_delete_image_noop_for_none():
-    storage = _import_storage()
+    storage = _import_storage_no_cloudinary()
     storage.delete_image(None)  # should not raise
     storage.delete_image("")    # should not raise
 
@@ -65,6 +73,9 @@ def test_production_without_cloudinary_logs_warning(caplog):
     original_env = os.environ.get("ENVIRONMENT")
     try:
         os.environ["ENVIRONMENT"] = "production"
+        # Ensure Cloudinary vars are absent so the warning path is triggered.
+        for var in ("CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"):
+            os.environ.pop(var, None)
         sys.modules.pop("app.utils.image_storage", None)
 
         with caplog.at_level(logging.WARNING, logger="beauty_api.image_storage"):
