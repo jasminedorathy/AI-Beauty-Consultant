@@ -1,0 +1,4 @@
+# Production requirements — delegates to requirements.txt.
+# Render's build command is set to: pip install -r requirements-prod.txt
+# This file exists solely to satisfy that dashboard configuration.
+-r requirements.txt
