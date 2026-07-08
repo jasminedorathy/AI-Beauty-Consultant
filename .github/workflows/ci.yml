@@ -25,7 +25,7 @@ jobs:
           cache-dependency-path: Backend/requirements.in
 
       - name: Install dependencies (clean install from compiled lock)
-        run: pip install --no-cache-dir -r requirements.lock
+        run: pip install --no-cache-dir -r requirements.lock pytest pytest-asyncio
 
       - name: Syntax check (all modules)
         run: |
