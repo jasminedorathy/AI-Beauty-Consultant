@@ -24,12 +24,6 @@ jobs:
           cache: "pip"
           cache-dependency-path: Backend/requirements.in
 
-      - name: Install pip-tools
-        run: pip install pip-tools
-
-      - name: Compile deterministic lock file from requirements.in
-        run: pip-compile requirements.in --output-file requirements.lock --no-header --quiet
-
       - name: Install dependencies (clean install from compiled lock)
         run: pip install --no-cache-dir -r requirements.lock
 
