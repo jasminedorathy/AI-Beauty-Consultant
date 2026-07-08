@@ -33,6 +33,7 @@ import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Callable, Optional
 
@@ -59,6 +60,11 @@ class JobStatus(str, Enum):
 # Each entry: {"status": JobStatus, "result": Any, "error": str, "created_at": float}
 _jobs: dict[str, dict] = {}
 _jobs_lock = threading.Lock()
+try:
+    from app.mongodb.collections import db
+    _jobs_collection = db["analysis_jobs"]
+except Exception:
+    _jobs_collection = None
 
 _executor = ThreadPoolExecutor(max_workers=_MAX_WORKERS, thread_name_prefix="analysis")
 
@@ -75,6 +81,12 @@ def _expire_old_jobs() -> None:
     for jid in to_delete:
         del _jobs[jid]
         _log.debug("Expired analysis job %s", jid)
+    if _jobs_collection is not None:
+        cutoff = datetime.utcnow() - timedelta(seconds=RESULT_TTL_SECONDS)
+        try:
+            _jobs_collection.delete_many({"created_at": {"$lt": cutoff}, "status": {"$in": [JobStatus.DONE, JobStatus.ERROR]}})
+        except Exception:
+            _log.debug("Mongo analysis job expiry skipped", exc_info=True)
 
 
 def _run_job(job_id: str, fn: Callable, *args, **kwargs) -> None:
@@ -82,6 +94,14 @@ def _run_job(job_id: str, fn: Callable, *args, **kwargs) -> None:
     with _jobs_lock:
         if job_id in _jobs:
             _jobs[job_id]["status"] = JobStatus.RUNNING
+    if _jobs_collection is not None:
+        try:
+            _jobs_collection.update_one(
+                {"job_id": job_id},
+                {"$set": {"status": JobStatus.RUNNING, "updated_at": datetime.utcnow()}},
+            )
+        except Exception:
+            _log.debug("Mongo analysis running update skipped", exc_info=True)
 
     try:
         result = fn(*args, **kwargs)
@@ -90,6 +110,16 @@ def _run_job(job_id: str, fn: Callable, *args, **kwargs) -> None:
                 _jobs[job_id]["status"] = JobStatus.DONE
                 _jobs[job_id]["result"] = result
             _expire_old_jobs()
+        if _jobs_collection is not None:
+            _jobs_collection.update_one(
+                {"job_id": job_id},
+                {"$set": {
+                    "status": JobStatus.DONE,
+                    "result": result,
+                    "error": None,
+                    "updated_at": datetime.utcnow(),
+                }},
+            )
         _log.info("Analysis job %s completed successfully", job_id)
     except Exception as exc:
         _log.exception("Analysis job %s failed: %s", job_id, exc)
@@ -98,11 +128,20 @@ def _run_job(job_id: str, fn: Callable, *args, **kwargs) -> None:
                 _jobs[job_id]["status"] = JobStatus.ERROR
                 _jobs[job_id]["error"]  = "Analysis failed. Please try again."
             _expire_old_jobs()
+        if _jobs_collection is not None:
+            _jobs_collection.update_one(
+                {"job_id": job_id},
+                {"$set": {
+                    "status": JobStatus.ERROR,
+                    "error": "Analysis failed. Please try again.",
+                    "updated_at": datetime.utcnow(),
+                }},
+            )
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def submit_analysis(fn: Callable, *args, **kwargs) -> str:
+def submit_analysis(owner_id: str, fn: Callable, *args, **kwargs) -> str:
     """
     Submit a callable to the background thread pool and return a job_id.
 
@@ -120,15 +159,26 @@ def submit_analysis(fn: Callable, *args, **kwargs) -> str:
             "result":     None,
             "error":      None,
             "created_at": time.monotonic(),
+            "owner_id":    owner_id,
         }
         _expire_old_jobs()
+    if _jobs_collection is not None:
+        _jobs_collection.insert_one({
+            "job_id": job_id,
+            "owner_id": owner_id,
+            "status": JobStatus.PENDING,
+            "result": None,
+            "error": None,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        })
 
     _executor.submit(_run_job, job_id, fn, *args, **kwargs)
     _log.info("Submitted analysis job %s", job_id)
     return job_id
 
 
-def get_job(job_id: str) -> Optional[dict]:
+def get_job(job_id: str, owner_id: str) -> Optional[dict]:
     """
     Return the current state of a job, or None if it doesn't exist / has expired.
 
@@ -139,9 +189,23 @@ def get_job(job_id: str) -> Optional[dict]:
             "error":   <str> | None,          # set when status == "error"
         }
     """
+    if _jobs_collection is not None:
+        try:
+            job_doc = _jobs_collection.find_one({"job_id": job_id, "owner_id": owner_id})
+            if job_doc is not None:
+                return {
+                    "status": job_doc["status"],
+                    "result": job_doc.get("result"),
+                    "error": job_doc.get("error"),
+                }
+        except Exception:
+            _log.debug("Mongo analysis job lookup skipped", exc_info=True)
+
     with _jobs_lock:
         job = _jobs.get(job_id)
         if job is None:
+            return None
+        if job.get("owner_id") != owner_id:
             return None
         return {
             "status": job["status"],

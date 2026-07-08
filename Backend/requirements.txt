@@ -25,6 +25,11 @@ razorpay>=1.4.1
 # ── Redis (optional — for multi-worker rate limiting) ─────────────────────────
 redis>=5.0.0  # optional: install for production multi-worker rate limiting
 
+# ── Cloudinary (optional — private object storage for biometric images) ───────
+# Set CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET to activate.
+# Falls back to base64-in-MongoDB when not configured (dev/test only).
+cloudinary>=1.38.0,<2.0.0
+
 # ── Deep learning model backends (skin + face-shape analysis) ────────────────
 # Both are imported LAZILY and gated by a memory check (see
 # app/core/model_memory_guard.py) — on a low-memory host (e.g. Render free

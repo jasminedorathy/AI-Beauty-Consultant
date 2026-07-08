@@ -158,27 +158,25 @@ def _run_analysis(img_bytes: bytes, img, user_email: str) -> dict:
     # 5. Generate annotated image
     annotated_img = generate_annotated_image(img, landmarks, gender)
 
-    # 6. Save to DB directly as Base64
+    # 6. Store images in private object storage; persist only the key in MongoDB.
     image_url = None
     annotated_image_url = None
     try:
         from app.auth.rbac import increment_usage
-        import base64
+        from app.utils.image_storage import store_image, get_image_url
 
-        # Convert original img (OpenCV BGR) to compressed JPEG Base64
         _, raw_buffer = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
-        raw_b64 = base64.b64encode(raw_buffer).decode('utf-8')
-        image_url = f"data:image/jpeg;base64,{raw_b64}"
+        image_key = store_image(bytes(raw_buffer), user_email, "raw")
+        image_url = get_image_url(image_key, ttl_seconds=600)
 
-        # Convert annotated img to compressed JPEG Base64
         _, ann_buffer = cv2.imencode('.jpg', annotated_img, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
-        ann_b64 = base64.b64encode(ann_buffer).decode('utf-8')
-        annotated_image_url = f"data:image/jpeg;base64,{ann_b64}"
+        annotated_key = store_image(bytes(ann_buffer), user_email, "annotated")
+        annotated_image_url = get_image_url(annotated_key, ttl_seconds=600)
 
         analysis_doc = {
             "user_email":           user_email,
-            "image_url":            image_url,
-            "annotated_image_url":  annotated_image_url,
+            "image_key":            image_key,
+            "annotated_image_key":  annotated_key,
             "face_shape":           shape_name,
             "face_shape_conf":      shape_conf,
             "gender":               gender,
@@ -282,7 +280,7 @@ async def analyze_face(image: UploadFile = File(...), current_user: dict = Depen
             raise HTTPException(status_code=400, detail="Failed to decode image. Please upload a valid image file.")
 
         # ── Submit heavy work to background thread pool ───────────────────────
-        job_id = submit_analysis(_run_analysis, img_bytes, img, user_email)
+        job_id = submit_analysis(user_email, _run_analysis, img_bytes, img, user_email)
         _log.info("Analysis job %s enqueued for user %s", job_id, user_email)
 
         return JSONResponse(
@@ -318,7 +316,7 @@ async def get_analysis_status(job_id: str, current_user: dict = Depends(get_curr
     if not job_id or len(job_id) > 64:
         raise HTTPException(status_code=400, detail="Invalid job ID.")
 
-    job = get_job(job_id)
+    job = get_job(job_id, current_user.get("sub"))
     if job is None:
         raise HTTPException(
             status_code=404,
@@ -352,15 +350,25 @@ async def get_history(
         history = list(
             analysis_collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
         )
+        from app.utils.image_storage import get_image_url as _get_image_url
         result = []
         for item in history:
             item["id"] = str(item["_id"])
             del item["_id"]
-            # Normalize scan image URLs dynamically using current BASE_URL
-            for url_key in ["image_url", "annotated_image_url"]:
-                if item.get(url_key) and not item[url_key].startswith("data:image"):
-                    filename = item[url_key].split("/")[-1].split("?")[0]
-                    item[url_key] = _secure_image_url(filename)
+            # Resolve storage keys to fresh signed URLs.
+            # New records store image_key / annotated_image_key; legacy records
+            # stored image_url / annotated_image_url directly as base64 data URIs.
+            for key_field, url_field in [
+                ("image_key", "image_url"),
+                ("annotated_image_key", "annotated_image_url"),
+            ]:
+                storage_key = item.pop(key_field, None)
+                if storage_key:
+                    item[url_field] = _get_image_url(storage_key, ttl_seconds=600)
+                elif item.get(url_field, "").startswith("data:image"):
+                    # Legacy base64 — omit the raw blob from list responses to
+                    # keep payload size reasonable; the client can re-fetch if needed.
+                    item[url_field] = None
             if "created_at" in item:
                 item["date"] = item["created_at"].strftime("%Y-%m-%d")
                 item["time"] = item["created_at"].strftime("%H:%M")

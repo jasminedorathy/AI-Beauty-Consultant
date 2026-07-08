@@ -42,12 +42,15 @@ logging.config.dictConfig(_LOG_CONFIG)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from app.core.startup_config import require_production_settings
 
 # Fix OpenBLAS Memory Allocation Error (Needs to be in main.py for Uvicorn worker to pick it up)
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
+
+require_production_settings()
 
 # 1️⃣ CREATE APP FIRST
 app = FastAPI(

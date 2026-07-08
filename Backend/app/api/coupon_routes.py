@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, validator
 from typing import Optional, List
 from datetime import datetime
 from app.mongodb.collections import (
-    coupons_collection, salons_collection, users_collection
+    coupons_collection, salons_collection, users_collection, slot_bookings_collection
 )
 from app.auth.jwt_handler import get_current_user
 import uuid
@@ -54,12 +54,19 @@ class CouponValidate(BaseModel):
     user_id: Optional[str] = None
 
 
+class CouponRedeem(BaseModel):
+    coupon_id: str
+    booking_id: str
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _get_owner_salon(current_user: dict):
     salon = salons_collection.find_one({"owner_user_id": current_user.get("sub")})
     if not salon:
         raise HTTPException(status_code=404, detail="No salon found for this account")
+    if not salon.get("is_verified", False):
+        raise HTTPException(status_code=403, detail="Your salon must be verified before managing coupons.")
     return salon
 
 def _strip(doc: dict) -> dict:
@@ -201,23 +208,56 @@ async def validate_coupon(data: CouponValidate, current_user: dict = Depends(get
 
 
 @router.post("/redeem")
-async def redeem_coupon(coupon_id: str, booking_amount: float, current_user: dict = Depends(get_current_user)):
+async def redeem_coupon(data: CouponRedeem, current_user: dict = Depends(get_current_user)):
     """
-    Mark coupon as redeemed after successful booking.
-    Called internally after payment confirmation.
+    Mark coupon as redeemed for a successful paid booking owned by this user.
     """
     user_id = current_user.get("sub")
-    coupon = coupons_collection.find_one({"id": coupon_id})
+    booking = slot_bookings_collection.find_one({
+        "$or": [{"id": data.booking_id}, {"booking_ref": data.booking_id}],
+        "user_id": user_id,
+        "payment_status": "paid",
+    })
+    if not booking:
+        raise HTTPException(status_code=404, detail="Paid booking not found")
+
+    coupon = coupons_collection.find_one({
+        "id": data.coupon_id,
+        "salon_id": booking.get("salon_id"),
+        "is_active": True,
+    })
     if not coupon:
         raise HTTPException(status_code=404, detail="Coupon not found")
-    discount = _calculate_discount(coupon, booking_amount)
-    coupons_collection.update_one(
-        {"id": coupon_id},
+
+    booking_id = booking.get("id") or booking.get("booking_ref")
+    if booking_id in coupon.get("redeemed_bookings", []):
+        return {"status": "success", "discount_applied": booking.get("coupon_discount", 0), "idempotent": True}
+
+    amount = float(booking.get("amount", booking.get("price", 0)) or 0)
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Booking has no server-side amount")
+
+    user_usage = coupon.get("used_by", []).count(user_id)
+    if user_usage >= coupon.get("per_user_limit", 1):
+        raise HTTPException(status_code=400, detail="You have already used this coupon")
+    if coupon.get("used_count", 0) >= coupon.get("max_uses", 100):
+        raise HTTPException(status_code=400, detail="Coupon usage limit reached")
+
+    discount = _calculate_discount(coupon, amount)
+    result = coupons_collection.update_one(
+        {"id": data.coupon_id, "redeemed_bookings": {"$ne": booking_id}},
         {
             "$inc": {"used_count": 1, "total_discount_given": discount},
             "$push": {"used_by": user_id},
+            "$addToSet": {"redeemed_bookings": booking_id},
             "$set": {"last_used_at": datetime.utcnow()}
         }
+    )
+    if result.matched_count == 0:
+        return {"status": "success", "discount_applied": discount, "idempotent": True}
+    slot_bookings_collection.update_one(
+        {"id": booking_id, "user_id": user_id},
+        {"$set": {"coupon_id": data.coupon_id, "coupon_discount": discount}}
     )
     return {"status": "success", "discount_applied": discount}
 

@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime
 
 from app.auth.jwt_handler import get_current_user
-from app.mongodb.collections import slot_bookings_collection, db
+from app.mongodb.collections import slot_bookings_collection, salons_collection, db
 
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
 
@@ -46,11 +46,47 @@ def _find_owned_booking(booking_id: str, user_id: str):
     })
 
 
+def _canonical_booking_id(booking: dict) -> str:
+    return booking.get("id") or booking.get("booking_ref")
+
+
+def _find_booked_service(booking: dict) -> Optional[dict]:
+    salon_id = booking.get("salon_id")
+    service_name = (booking.get("service_name") or "").strip().lower()
+    if not salon_id or not service_name:
+        return None
+    salon = salons_collection.find_one({"id": salon_id}, {"services_with_pricing": 1})
+    for service in (salon or {}).get("services_with_pricing", []):
+        if (service.get("name") or "").strip().lower() == service_name:
+            return service
+    return None
+
+
+def _server_amount_for_booking(booking: dict) -> float:
+    service = _find_booked_service(booking)
+    amount = None
+    if service and service.get("is_active", True):
+        amount = service.get("price")
+    if amount is None:
+        amount = booking.get("amount", booking.get("price"))
+    try:
+        amount = round(float(amount), 2)
+    except (TypeError, ValueError):
+        amount = 0.0
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Booking has no payable server-side amount.")
+    return amount
+
+
+def _to_paise(amount: float) -> int:
+    return int(round(amount * 100))
+
+
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
 class CreateOrderRequest(BaseModel):
     booking_id: str
-    amount: float           # in INR
+    amount: Optional[float] = None  # ignored; server derives the payable amount
     currency: str = "INR"
     description: Optional[str] = None
 
@@ -92,7 +128,10 @@ async def create_payment_order(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    amount_paise = int(req.amount * 100)  # Razorpay works in paise
+    amount = _server_amount_for_booking(booking)
+    amount_paise = _to_paise(amount)  # Razorpay works in paise
+    currency = (req.currency or "INR").upper()
+    booking_id = _canonical_booking_id(booking)
 
     # ── Demo Mode (no API keys) ───────────────────────────────────────────────
     if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
@@ -105,11 +144,12 @@ async def create_payment_order(
         # Record pending payment
         payments_collection.insert_one({
             "id": str(uuid.uuid4()),
-            "booking_id": req.booking_id,
+            "booking_id": booking_id,
             "user_id": current_user.get("sub"),
             "razorpay_order_id": demo_order_id,
-            "amount": req.amount,
-            "currency": req.currency,
+            "amount": amount,
+            "amount_paise": amount_paise,
+            "currency": currency,
             "status": "created",
             "mode": "demo",
             "created_at": datetime.utcnow().isoformat()
@@ -117,9 +157,9 @@ async def create_payment_order(
         return {
             "order_id": demo_order_id,
             "amount": amount_paise,
-            "currency": req.currency,
+            "currency": currency,
             "key": "rzp_test_demo",
-            "booking_id": req.booking_id,
+            "booking_id": booking_id,
             "is_demo": True,
             "description": req.description or f"Salon booking #{req.booking_id[:8].upper()}",
             "prefill": {
@@ -135,10 +175,10 @@ async def create_payment_order(
         client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
         order = client.order.create({
             "amount": amount_paise,
-            "currency": req.currency,
-            "receipt": req.booking_id[:40],
+            "currency": currency,
+            "receipt": booking_id[:40],
             "notes": {
-                "booking_id": req.booking_id,
+                "booking_id": booking_id,
                 "user": current_user.get("sub"),
                 "description": req.description or "Salon booking"
             }
@@ -146,11 +186,12 @@ async def create_payment_order(
         # Record in DB
         payments_collection.insert_one({
             "id": str(uuid.uuid4()),
-            "booking_id": req.booking_id,
+            "booking_id": booking_id,
             "user_id": current_user.get("sub"),
             "razorpay_order_id": order["id"],
-            "amount": req.amount,
-            "currency": req.currency,
+            "amount": amount,
+            "amount_paise": amount_paise,
+            "currency": currency,
             "status": "created",
             "mode": "live",
             "created_at": datetime.utcnow().isoformat()
@@ -160,7 +201,7 @@ async def create_payment_order(
             "amount": order["amount"],
             "currency": order["currency"],
             "key": RAZORPAY_KEY_ID,
-            "booking_id": req.booking_id,
+            "booking_id": booking_id,
             "is_demo": False,
             "description": req.description or "Salon Booking",
             "prefill": {
@@ -191,6 +232,21 @@ async def verify_payment(
     owned_booking = _find_owned_booking(req.booking_id, current_user.get("sub"))
     if not owned_booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+    booking_id = _canonical_booking_id(owned_booking)
+    expected_amount = _server_amount_for_booking(owned_booking)
+    expected_paise = _to_paise(expected_amount)
+    user_id = current_user.get("sub")
+    pending_payment = payments_collection.find_one({
+        "booking_id": booking_id,
+        "user_id": user_id,
+        "razorpay_order_id": req.razorpay_order_id,
+        "status": "created",
+    })
+    if not pending_payment:
+        raise HTTPException(status_code=400, detail="No pending payment record found for this booking and order.")
+    recorded_paise = int(pending_payment.get("amount_paise") or _to_paise(float(pending_payment.get("amount", 0))))
+    if recorded_paise != expected_paise:
+        raise HTTPException(status_code=400, detail="Payment amount no longer matches the booking total.")
 
     # ── Demo Mode ─────────────────────────────────────────────────────────────
     if req.razorpay_order_id.startswith("order_demo_"):
@@ -200,7 +256,7 @@ async def verify_payment(
                 detail="Demo payments are disabled in production."
             )
         slot_bookings_collection.update_one(
-            {"$or": [{"id": req.booking_id}, {"booking_ref": req.booking_id}], "user_id": current_user.get("sub")},
+            {"id": booking_id, "user_id": user_id, "payment_status": {"$ne": "paid"}},
             {"$set": {
                 "status": "confirmed",
                 "payment_status": "paid",
@@ -210,13 +266,17 @@ async def verify_payment(
             }}
         )
         payments_collection.update_one(
-            {"booking_id": req.booking_id, "razorpay_order_id": req.razorpay_order_id, "user_id": current_user.get("sub")},
-            {"$set": {"status": "paid", "paid_at": datetime.utcnow().isoformat()}}
+            {"_id": pending_payment["_id"], "status": "created"},
+            {"$set": {
+                "status": "paid",
+                "razorpay_payment_id": req.razorpay_payment_id,
+                "paid_at": datetime.utcnow().isoformat(),
+            }}
         )
         return {
             "status": "success",
             "message": "Booking confirmed! (Demo payment recorded)",
-            "booking_id": req.booking_id,
+            "booking_id": booking_id,
             "mode": "demo"
         }
 
@@ -230,12 +290,42 @@ async def verify_payment(
         hashlib.sha256
     ).hexdigest()
 
-    if expected_signature != req.razorpay_signature:
-        raise HTTPException(status_code=400, detail="Payment verification failed — invalid signature")
+    if not hmac.compare_digest(expected_signature, req.razorpay_signature):
+        raise HTTPException(status_code=400, detail="Payment verification failed - invalid signature")
+
+    try:
+        import razorpay
+        client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+        payment = client.payment.fetch(req.razorpay_payment_id)
+        if payment.get("order_id") != req.razorpay_order_id:
+            raise HTTPException(status_code=400, detail="Payment does not belong to this order.")
+        if int(payment.get("amount", 0)) != expected_paise:
+            raise HTTPException(status_code=400, detail="Payment amount does not match the booking total.")
+        if (payment.get("currency") or "").upper() != (pending_payment.get("currency") or "INR").upper():
+            raise HTTPException(status_code=400, detail="Payment currency does not match the order.")
+        if payment.get("status") not in ("authorized", "captured"):
+            raise HTTPException(status_code=400, detail="Payment has not been authorized or captured.")
+    except HTTPException:
+        raise
+    except Exception:
+        _log.exception("Razorpay payment fetch failed during verification")
+        raise HTTPException(status_code=503, detail="Payment provider verification failed. Please try again.")
+
+    payment_update = payments_collection.update_one(
+        {"_id": pending_payment["_id"], "status": "created"},
+        {"$set": {
+            "status": "paid",
+            "razorpay_payment_id": req.razorpay_payment_id,
+            "provider_status": payment.get("status"),
+            "paid_at": datetime.utcnow().isoformat()
+        }}
+    )
+    if payment_update.matched_count == 0:
+        raise HTTPException(status_code=409, detail="Payment was already processed.")
 
     # Mark booking as paid and confirmed (scoped to this user's booking only)
     slot_bookings_collection.update_one(
-        {"$or": [{"id": req.booking_id}, {"booking_ref": req.booking_id}], "user_id": current_user.get("sub")},
+        {"id": booking_id, "user_id": user_id},
         {"$set": {
             "status": "confirmed",
             "payment_status": "paid",
@@ -245,19 +335,10 @@ async def verify_payment(
             "paid_at": datetime.utcnow().isoformat(),
         }}
     )
-    payments_collection.update_one(
-        {"booking_id": req.booking_id, "user_id": current_user.get("sub")},
-        {"$set": {
-            "status": "paid",
-            "razorpay_payment_id": req.razorpay_payment_id,
-            "paid_at": datetime.utcnow().isoformat()
-        }}
-    )
-
     return {
         "status": "success",
         "message": "Payment verified and booking confirmed!",
-        "booking_id": req.booking_id,
+        "booking_id": booking_id,
         "payment_id": req.razorpay_payment_id,
     }
 

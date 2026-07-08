@@ -12,6 +12,44 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: APP_ENV
+        value: production
+      - key: JWT_SECRET
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: MONGODB_DB_NAME
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: SMTP_SERVER
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_EMAIL
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: REQUIRE_REDIS_RATE_LIMIT
+        value: "true"
+      - key: RATE_LIMIT_TRUST_PROXY_HEADERS
+        value: "true"
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false          # paste in Render dashboard — enables private biometric image storage
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
       - key: OPENROUTER_API_KEY
         sync: false          # you will paste this manually in Render dashboard
       - key: PYTHON_VERSION
