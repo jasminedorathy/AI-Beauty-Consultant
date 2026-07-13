@@ -78,10 +78,11 @@ def _enrich(salon: dict, user_lat: float = None, user_lon: float = None) -> dict
 
 def _get_verified_owner_salon(current_user: dict) -> dict:
     salon = salons_collection.find_one({
-        "owner_user_id": current_user.get("sub"),
-        "is_verified": True,
+        "owner_user_id": current_user.get("sub")
     })
     if not salon:
+        raise HTTPException(status_code=404, detail="Salon not found")
+    if not salon.get("is_verified", False):
         raise HTTPException(status_code=403, detail="Verified salon owner access required")
     return salon
 
@@ -763,7 +764,6 @@ async def upload_salon_gallery(
     """Uploads multiple images for a salon gallery and returns their URLs."""
     if current_user["role"] != "shop_owner":
         raise HTTPException(status_code=403, detail="Only shop owners can upload gallery images")
-    _get_verified_owner_salon(current_user)
     
     # Salon gallery images are intentionally public (customers need to browse them).
     # They are stored under static/public/ which is served by the public StaticFiles

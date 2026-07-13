@@ -257,6 +257,7 @@ const ShopOwnerDashboard = ({ section }) => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hasNoSalon, setHasNoSalon] = useState(false);
+  const [isPendingVerification, setIsPendingVerification] = useState(false);
   // If a section prop is passed (from sidebar nav), use its mapped tab as default
   const [activeTab, setActiveTab] = useState(SECTION_TO_TAB[section] || 'bookings');
   const [filterDate, setFilterDate] = useState('');
@@ -277,12 +278,16 @@ const ShopOwnerDashboard = ({ section }) => {
       setSalon(s);
       const b = await getOwnerBookings();
       setBookings(b);
+      setHasNoSalon(false);
+      setIsPendingVerification(false);
     } catch (err) {
       const status = err.response?.status;
       if (status === 404) {
         setHasNoSalon(true);
+        setIsPendingVerification(false);
       } else if (status === 403) {
-        toast.error('Access denied. Please log in as a Shop Owner.');
+        setHasNoSalon(false);
+        setIsPendingVerification(true);
       } else if (status !== 401) {
         // 401 is handled by the global interceptor (auto-redirect to login)
         toast.error('Failed to load salon data. Please refresh the page.');
@@ -324,6 +329,22 @@ const ShopOwnerDashboard = ({ section }) => {
   );
 
   if (hasNoSalon) return <RegisterForm onSuccess={loadData} />;
+
+  if (isPendingVerification) return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 max-w-2xl mx-auto text-center my-10">
+      <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center text-amber-500 mx-auto mb-4 animate-bounce">
+        <FaClock className="text-3xl" />
+      </div>
+      <h2 className="text-2xl font-bold text-gray-900 mb-2">Verification Pending</h2>
+      <p className="text-sm text-gray-500 max-w-md mx-auto leading-relaxed mb-6">
+        Your salon has been successfully registered! Our administrators are currently reviewing your details. 
+        Once verified, you will gain full access to your Shop Dashboard, waitlists, client intelligence tools, and more.
+      </p>
+      <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl text-xs text-amber-800 inline-block">
+        🛡️ Typically verified within 24-48 business hours. Thank you for your patience!
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-5">
@@ -368,7 +389,6 @@ const ShopOwnerDashboard = ({ section }) => {
           ['staff',      '👥 Staff'],
           ['marketing',  '📣 Marketing'],
           ['developer',  '🔑 Developer API'],
-          ['clients',    '🧠 Client Intel'],
           ['noshow',     '🔔 No-Show AI'],
           ['profile',    '🏪 My Profile'],
         ].map(([k, l]) => (
@@ -549,7 +569,6 @@ const ShopOwnerDashboard = ({ section }) => {
       {/* Extended Enterprise Modules */}
       {activeTab === 'marketing' && <MarketingTools initialTab={section === 'coupons' ? 'coupons' : 'campaigns'} />}
       {activeTab === 'developer' && <DeveloperAPI section={section} />}
-      {activeTab === 'clients'   && <ClientIntelligence />}
       {activeTab === 'noshow'    && <NoShowPredictor />}
 
     </div>

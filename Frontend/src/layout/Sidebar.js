@@ -189,7 +189,6 @@ const ShopOwnerNav = ({ can }) => (
     </NavSection>
 
     <NavSection title="Smart Tools" collapsible color="text-violet-500">
-      {can("client_intelligence") && <NavItem to="/dashboard/client-intelligence" icon={<FaBrain />}              label="Client Intelligence" badge="NEW" badgeColor="bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400" />}
       {can("noshow_predictor")    && <NavItem to="/dashboard/noshow-predictor"    icon={<FaExclamationTriangle />} label="No-Show Predictor"   badge="AI"  badgeColor="bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400" />}
     </NavSection>
 
@@ -239,7 +238,6 @@ const AdminNav = ({ can, t }) => (
     </NavSection>
 
     <NavSection title="Smart Tools" collapsible color="text-violet-500">
-      <NavItem to="/dashboard/client-intelligence" icon={<FaBrain />}              label="Client Intelligence" badge="AI" badgeColor="bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400" />
       <NavItem to="/dashboard/noshow-predictor"    icon={<FaExclamationTriangle />} label="No-Show Predictor"   badge="AI" badgeColor="bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400" />
       <NavItem to="/dashboard/conflict-checker"    icon={<FaFlask />}               label="Conflict Checker"    badge="AI" badgeColor="bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400" />
     </NavSection>

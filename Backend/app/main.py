@@ -155,6 +155,8 @@ from app.api.webhook_routes import router as webhook_router
 from app.api.chat_routes import router as chat_router
 from app.api.form_routes import router as form_router
 from app.api.orders_routes import router as orders_router
+from app.api.inventory_routes import router as inventory_router
+
 
 # ── Phase 1 New Feature Routers ───────────────────────────────────────────────
 from app.api.passport_routes import router as passport_router
@@ -315,6 +317,8 @@ app.include_router(webhook_router)
 app.include_router(chat_router)
 app.include_router(form_router)
 app.include_router(orders_router)
+app.include_router(inventory_router)
+
 
 # ── Phase 1 New Feature Routers ───────────────────────────────────────────────
 app.include_router(passport_router)
